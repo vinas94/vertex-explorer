@@ -219,13 +219,21 @@ class SchedulesApp(App):
         run = next((r for r in self._ua_failed_runs if r.name == run_name), None)
         if not run or not run.schedule_name:
             return
+        self._last_ua_run_key = run_name
+        self._ua_view = False
+        self._update_bar()
         st = self.query_one("#schedules-table", DataTable)
         for idx, row_key in enumerate(st.rows):
             if row_key.value == run.schedule_name:
                 self._suppress_row_highlight = True
                 st.move_cursor(row=idx)
                 st.focus()
-                self.call_after_refresh(lambda: setattr(self, "_suppress_row_highlight", False))
+
+                def _after():
+                    self._suppress_row_highlight = False
+                    self._refresh_runs_table()
+
+                self.call_after_refresh(_after)
                 break
 
     # ── worker ────────────────────────────────────────────────────────────────
@@ -459,7 +467,7 @@ class SchedulesApp(App):
             )
             if n:
                 style = "bold orange" if self._ua_view else "orange"
-                right_parts.append(f'[@click="app.toggle_ua_view"][{style} not underline]⚠ {n} Failed UA Runs[/][/]')
+                right_parts.append(f'[@click="app.toggle_ua_view"][{style} not underline]⚠ {n} New Failed UA Runs[/][/]')
         if self._region:
             right_parts.append(self._region)
         if self._last_refresh:
