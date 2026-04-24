@@ -69,6 +69,7 @@ class SchedulesApp(App):
         self._ua_failed_runs: list = []
         self._ua_view: bool = False
         self._suppress_row_highlight: bool = False
+        self._pre_ua_focus: str | None = None
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
@@ -121,8 +122,22 @@ class SchedulesApp(App):
         self.query_one("#filter-input", Input).focus()
 
     def action_toggle_ua_view(self) -> None:
-        self._ua_view = not self._ua_view
-        self._refresh_runs_table()
+        if not self._ua_view:
+            focused = self.focused
+            self._pre_ua_focus = focused.id if focused else None
+            self._ua_view = True
+            self._refresh_runs_table()
+            self.call_after_refresh(lambda: self.query_one("#runs-table", DataTable).focus())
+        else:
+            self._ua_view = False
+            self._refresh_runs_table()
+            if self._pre_ua_focus:
+                try:
+                    self.query_one(f"#{self._pre_ua_focus}").focus()
+                except Exception:
+                    self.query_one("#schedules-table", DataTable).focus()
+            else:
+                self.query_one("#schedules-table", DataTable).focus()
         self._update_bar()
 
     def action_toggle_region(self) -> None:
@@ -187,6 +202,23 @@ class SchedulesApp(App):
     def _on_schedule_highlighted(self, _: DataTable.RowHighlighted) -> None:
         if not self._suppress_row_highlight:
             self._refresh_runs_table()
+
+    @on(DataTable.RowSelected, "#runs-table")
+    def _on_run_selected(self, event: DataTable.RowSelected) -> None:
+        if not self._ua_view:
+            return
+        run_name = event.row_key.value if event.row_key else None
+        if not run_name:
+            return
+        run = next((r for r in self._ua_failed_runs if r.name == run_name), None)
+        if not run or not run.schedule_name:
+            return
+        st = self.query_one("#schedules-table", DataTable)
+        for idx, row_key in enumerate(st.rows):
+            if row_key.value == run.schedule_name:
+                st.move_cursor(row=idx)
+                st.focus()
+                break
 
     # ── worker ────────────────────────────────────────────────────────────────
 
