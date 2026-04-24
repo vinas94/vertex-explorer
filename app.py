@@ -52,7 +52,7 @@ class SchedulesApp(App):
     #filter-input { height: 1; border: none; padding: 0 1; }
     #content { height: 1fr; }
     #schedules-table { width: 1fr; overflow-x: hidden; }
-    #runs-table { width: 70; overflow-x: hidden; }
+    #runs-table { width: 1fr; overflow-x: hidden; }
     """
 
     active_only: reactive[bool] = reactive(False)
@@ -99,7 +99,7 @@ class SchedulesApp(App):
         st.focus()
 
         rt = self.query_one("#runs-table", DataTable)
-        rt.add_columns("Status", "Start", "Duration")
+        rt.add_columns("Status", "Start", "Duration", "Prev", "Name")
         rt.cursor_type = "row"
 
         self.action_refresh()
@@ -286,7 +286,8 @@ class SchedulesApp(App):
 
         cutoff = pendulum.now("UTC").subtract(days=UA_LOOKBACK_DAYS)
         self._ua_failed_runs = [
-            r for r in self._all_runs
+            r
+            for r in self._all_runs
             if r.state.name == "PIPELINE_STATE_FAILED"
             and any(_run_display_name(r.name).startswith(p) for p in UA_PREFIXES)
             and (not r.end_time or pendulum.instance(r.end_time) >= cutoff)
@@ -323,6 +324,7 @@ class SchedulesApp(App):
         if runs_widget.styles.width != new_width:
             runs_widget.styles.width = new_width
 
+        self.query_one("#runs-table", DataTable).clear(columns=True)
         self.call_after_refresh(self._populate_runs_table, wide, selected)
 
     def _populate_runs_table(self, wide: bool, selected: str | None) -> None:
@@ -333,9 +335,7 @@ class SchedulesApp(App):
         else:
             table.add_columns("Status", "Start", "Duration")
 
-        runs = self._ua_failed_runs if self._ua_view else (
-            self._runs_by_schedule.get(selected, []) if selected else []
-        )
+        runs = self._ua_failed_runs if self._ua_view else (self._runs_by_schedule.get(selected, []) if selected else [])
         sorted_runs = sorted(
             runs,
             key=lambda r: r.start_time or datetime.min.replace(tzinfo=timezone.utc),
@@ -347,9 +347,7 @@ class SchedulesApp(App):
             short_state = state_name.replace("PIPELINE_STATE_", "")
             state_cell = Text(short_state, style=self._RUN_STATE_STYLE.get(state_name, "dim"))
             recent_fail = (
-                state_name == "PIPELINE_STATE_FAILED"
-                and run.end_time
-                and pendulum.instance(run.end_time) >= cutoff_24h
+                state_name == "PIPELINE_STATE_FAILED" and run.end_time and pendulum.instance(run.end_time) >= cutoff_24h
             )
             start_cell = Text(_fmt_time(run.start_time), style="red" if recent_fail else "")
             if wide:
@@ -461,13 +459,12 @@ class SchedulesApp(App):
         right_parts = []
         if self._ua_failed_runs:
             cutoff = pendulum.now("UTC").subtract(hours=24)
-            n = sum(
-                1 for r in self._ua_failed_runs
-                if r.end_time and pendulum.instance(r.end_time) >= cutoff
-            )
+            n = sum(1 for r in self._ua_failed_runs if r.end_time and pendulum.instance(r.end_time) >= cutoff)
             if n:
                 style = "bold orange" if self._ua_view else "orange"
-                right_parts.append(f'[@click="app.toggle_ua_view"][{style} not underline]⚠ {n} New Failed UA Runs[/][/]')
+                right_parts.append(
+                    f'[@click="app.toggle_ua_view"][{style} not underline]⚠ {n} New Failed UA Runs[/][/]'
+                )
         if self._region:
             right_parts.append(self._region)
         if self._last_refresh:
