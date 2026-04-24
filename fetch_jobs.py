@@ -102,3 +102,32 @@ def fetch_all(on_schedules=None, on_runs=None) -> dict:
 
 if __name__ == "__main__":
     result = fetch_all()
+
+#
+# LOOKBACK_DAYS = 7
+# PREFIXES = [
+#     "go-model-treebased-install-prediction",
+#     "tensorflow-install-prediction",
+#     "tensorflow-action-prediction",
+#     "tensorflow-audience-similarity",
+#     "tensorflow-win-price-prediction",
+# ]
+#
+#
+# ua_failed_runs = []
+# for region, runs in result["runs"].items():
+#     for run in runs:
+#         run_name = run.name.split("/")[-1]
+#
+#         if run.end_time and run.end_time < pendulum.now("UTC").add(days=-LOOKBACK_DAYS):
+#             continue
+#
+#         if run.state.name != "PIPELINE_STATE_FAILED":
+#             continue
+#
+#         if not any(run_name.startswith(p) for p in PREFIXES):
+#             continue
+#
+#         ua_failed_runs.append(run)
+#
+# print(len(ua_failed_runs))

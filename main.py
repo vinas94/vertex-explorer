@@ -17,6 +17,11 @@ from textual.widgets import DataTable, Footer, Input, Label
 
 from fetch_jobs import fetch_all
 
+UA_PREFIXES = [
+    "tensorflow-install-prediction",
+]
+UA_LOOKBACK_DAYS = 7
+
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 
@@ -224,6 +229,7 @@ class SchedulesApp(App):
         Binding("r", "toggle_region", "Region"),
         Binding("f", "focus_filter", "Filter"),
         Binding("a", "toggle_active_only", "Active"),
+        Binding("d", "toggle_ua_view", "Failed", priority=True),
         Binding("o", "open_browser", "Open schedule"),
         Binding("O", "open_run", "Open run"),
         Binding("q", "quit", "Quit"),
@@ -240,7 +246,7 @@ class SchedulesApp(App):
     #titlebar Label { height: 1; }
     #status-left  { width: 1fr; content-align: left middle; }
     #status-center { width: auto; content-align: center middle; text-style: bold; }
-    #status-right { width: 1fr; content-align: right middle; }
+    #status-right { width: 1fr; content-align: right middle; link-color: orange; link-style: none; }
     #filter-input { height: 1; border: none; padding: 0 1; }
     #content { height: 1fr; }
     #schedules-table { width: 1fr; overflow-x: hidden; }
@@ -257,7 +263,10 @@ class SchedulesApp(App):
         self._loading_schedules: bool = False
         self._loading_runs: bool = False
         self._runs_by_schedule: dict[str, list] = {}
-        self._region: str | None = None  # None = both, "west3", "west4"
+        self._region: str | None = None
+        self._ua_failed_runs: list = []
+        self._ua_view: bool = False
+        self._suppress_row_highlight: bool = False
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
@@ -276,7 +285,12 @@ class SchedulesApp(App):
 
     def on_mount(self) -> None:
         st = self.query_one("#schedules-table", DataTable)
-        st.add_columns("Region", "Status", "Cron", "Next Run", "Runs", "Name")
+        st.add_column("Region")
+        st.add_column("Status")
+        st.add_column("Cron")
+        st.add_column("Next Run")
+        st.add_column("Prev", width=7)
+        st.add_column("Name")
         st.cursor_type = "row"
         st.focus()
 
@@ -303,6 +317,11 @@ class SchedulesApp(App):
 
     def action_focus_filter(self) -> None:
         self.query_one("#filter-input", Input).focus()
+
+    def action_toggle_ua_view(self) -> None:
+        self._ua_view = not self._ua_view
+        self._refresh_runs_table()
+        self._update_bar()
 
     def action_toggle_region(self) -> None:
         cycle = {None: "west3", "west3": "west4", "west4": None}
@@ -365,7 +384,8 @@ class SchedulesApp(App):
 
     @on(DataTable.RowHighlighted, "#schedules-table")
     def _on_schedule_highlighted(self, _: DataTable.RowHighlighted) -> None:
-        self._refresh_runs_table()
+        if not self._suppress_row_highlight:
+            self._refresh_runs_table()
 
     # ── worker ────────────────────────────────────────────────────────────────
 
@@ -416,6 +436,16 @@ class SchedulesApp(App):
             runs.sort(key=_key, reverse=True)
 
         self._runs_by_schedule = by_sched
+
+        cutoff = pendulum.now("UTC").subtract(days=UA_LOOKBACK_DAYS)
+        self._ua_failed_runs = [
+            r
+            for r in self._all_runs
+            if r.state.name == "PIPELINE_STATE_FAILED"
+            and any(_run_display_name(r.name).startswith(p) for p in UA_PREFIXES)
+            and (not r.end_time or pendulum.instance(r.end_time) >= cutoff)
+        ]
+
         self._loading_runs = False
         self._refresh_runs_table()
         self._refresh_table()
@@ -438,19 +468,27 @@ class SchedulesApp(App):
     }
 
     def _refresh_runs_table(self) -> None:
-        table = self.query_one("#runs-table", DataTable)
         selected = self._selected_schedule_name()
         is_unscheduled = selected is not None and selected.endswith("/__unscheduled__")
+        wide = self._ua_view or is_unscheduled
 
+        runs_widget = self.query_one("#runs-table")
+        new_width = "1fr" if wide else 50
+        width_changed = runs_widget.styles.width != new_width
+        if width_changed:
+            runs_widget.styles.width = new_width
+
+        self.call_after_refresh(self._populate_runs_table, wide, selected)
+
+    def _populate_runs_table(self, wide: bool, selected: str | None) -> None:
+        table = self.query_one("#runs-table", DataTable)
         table.clear(columns=True)
-        if is_unscheduled:
-            table.add_columns("Status", "Start", "Duration", "Name")
-            self.query_one("#runs-table").styles.width = "1fr"
+        if wide:
+            table.add_columns("Status", "Start", "Duration", "Prev", "Name")
         else:
             table.add_columns("Status", "Start", "Duration")
-            self.query_one("#runs-table").styles.width = 50
 
-        runs = self._runs_by_schedule.get(selected, []) if selected else []
+        runs = self._ua_failed_runs if self._ua_view else (self._runs_by_schedule.get(selected, []) if selected else [])
         sorted_runs = sorted(
             runs,
             key=lambda r: r.start_time or datetime.min.replace(tzinfo=timezone.utc),
@@ -460,11 +498,17 @@ class SchedulesApp(App):
             state_name = run.state.name
             short_state = state_name.replace("PIPELINE_STATE_", "")
             state_cell = Text(short_state, style=self._RUN_STATE_STYLE.get(state_name, "dim"))
-            if is_unscheduled:
+            if wide:
+                prev = (
+                    _run_dots(self._runs_by_schedule[run.schedule_name])
+                    if run.schedule_name in self._runs_by_schedule
+                    else Text()
+                )
                 table.add_row(
                     state_cell,
                     _fmt_time(run.start_time),
                     _fmt_duration(run.start_time, run.end_time),
+                    prev,
                     _run_display_name(run.name),
                     key=run.name,
                 )
@@ -486,6 +530,11 @@ class SchedulesApp(App):
     def _refresh_table(self) -> None:
         table = self.query_one("#schedules-table", DataTable)
         predicate, terms = parse_filter(self.query_one("#filter-input", Input).value)
+
+        try:
+            saved_key = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
+        except Exception:
+            saved_key = None
 
         table.clear()
         count = 0
@@ -532,18 +581,30 @@ class SchedulesApp(App):
             )
             count += 1
 
+        if saved_key:
+            self._suppress_row_highlight = True
+            for idx, row_key in enumerate(table.rows):
+                if row_key.value == saved_key:
+                    table.move_cursor(row=idx)
+                    break
+            self._suppress_row_highlight = False
+
         self._update_bar(count)
 
     def _update_bar(self, count: int | None = None) -> None:
         if self._loading_schedules:
-            left = "Loading schedules..."
+            left = "Fetching schedules..."
         elif self._loading_runs:
-            left = "Loading runs..."
+            left = "Fetching runs..."
         else:
             total = len(self._all_schedules)
             left = f"{count}/{total} schedules" if self.active_only and count is not None else f"{total} schedules"
 
         right_parts = []
+        if self._ua_failed_runs:
+            n = len(self._ua_failed_runs)
+            style = "bold orange" if self._ua_view else "orange"
+            right_parts.append(f'[@click="app.toggle_ua_view"][{style} not underline]⚠ {n} Failed UA Runs[/][/]')
         if self._region:
             right_parts.append(self._region)
         if self._last_refresh:
@@ -553,7 +614,7 @@ class SchedulesApp(App):
         self.query_one("#status-right", Label).update("  ".join(right_parts))
 
 
-if __name__ == "__main__":
+def main() -> None:
     import logging
 
     _devnull = open(os.devnull, "w")
@@ -562,3 +623,7 @@ if __name__ == "__main__":
             _h.stream = _devnull
 
     SchedulesApp().run()
+
+
+if __name__ == "__main__":
+    main()
