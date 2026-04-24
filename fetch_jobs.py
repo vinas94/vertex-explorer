@@ -7,15 +7,14 @@ import pendulum
 from google.cloud import aiplatform_v1
 from google.protobuf import field_mask_pb2
 
+from config import PROJECT, LOCATIONS
+
 colorlog.basicConfig(
     level=logging.INFO,
     format="%(log_color)s%(asctime)s %(name)s %(levelname)s%(reset)s %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 log = logging.getLogger(__name__)
-
-PROJECT = "martin-test-datalab"
-LOCATIONS = ["europe-west3", "europe-west4"]
 
 RUNS_DAYS = 28
 SCHEDULES_DAYS = 7
