@@ -70,6 +70,7 @@ class SchedulesApp(App):
         self._ua_view: bool = False
         self._suppress_row_highlight: bool = False
         self._pre_ua_focus: str | None = None
+        self._last_ua_run_key: str | None = None
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
@@ -129,6 +130,11 @@ class SchedulesApp(App):
             self._refresh_runs_table()
             self.call_after_refresh(lambda: self.query_one("#runs-table", DataTable).focus())
         else:
+            try:
+                rt = self.query_one("#runs-table", DataTable)
+                self._last_ua_run_key = rt.coordinate_to_cell_key(rt.cursor_coordinate).row_key.value
+            except Exception:
+                pass
             self._ua_view = False
             self._refresh_runs_table()
             if self._pre_ua_focus:
@@ -216,8 +222,10 @@ class SchedulesApp(App):
         st = self.query_one("#schedules-table", DataTable)
         for idx, row_key in enumerate(st.rows):
             if row_key.value == run.schedule_name:
+                self._suppress_row_highlight = True
                 st.move_cursor(row=idx)
                 st.focus()
+                self.call_after_refresh(lambda: setattr(self, "_suppress_row_highlight", False))
                 break
 
     # ── worker ────────────────────────────────────────────────────────────────
@@ -357,6 +365,12 @@ class SchedulesApp(App):
                     _fmt_duration(run.start_time, run.end_time),
                     key=run.name,
                 )
+
+        if self._ua_view and self._last_ua_run_key:
+            for idx, row_key in enumerate(table.rows):
+                if row_key.value == self._last_ua_run_key:
+                    table.move_cursor(row=idx)
+                    break
 
     def _selected_schedule_name(self) -> str | None:
         try:
