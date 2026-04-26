@@ -1,8 +1,3 @@
-# Grammar:
-#   expr   = term ("|" term)*
-#   term   = factor ("&" factor)*
-#   factor = WORD | "(" expr ")"
-
 from rich.text import Text
 
 
@@ -97,7 +92,6 @@ class _Parser:
 
 
 def parse_filter(text: str) -> tuple:
-    """Return (predicate | None, highlight_terms). None predicate means no filter."""
     text = text.strip()
     if not text:
         return None, []

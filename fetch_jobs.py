@@ -102,7 +102,7 @@ def fetch_all(on_schedules=None, on_runs=None) -> dict:
 if __name__ == "__main__":
     result = fetch_all()
 
-#
+
 # LOOKBACK_DAYS = 7
 # PREFIXES = [
 #     "go-model-treebased-install-prediction",
