@@ -7,54 +7,19 @@ from config import DOT_STYLE
 
 
 def _run_url(resource_name: str) -> str:
-    parts = resource_name.split("/")
-    project, location, run_id = parts[1], parts[3], parts[5]
+    _, project, _, region, _, resource_id = resource_name.split("/")
     return (
-        f"https://console.cloud.google.com/agent-platform/pipelines/locations/{location}"
-        f"/runs/{run_id}?project={project}"
+        f"https://console.cloud.google.com/agent-platform/pipelines/locations/{region}"
+        f"/runs/{resource_id}?project={project}"
     )
 
 
 def _schedule_url(resource_name: str) -> str:
-    parts = resource_name.split("/")
-    project, location, schedule_id = parts[1], parts[3], parts[5]
+    _, project, _, region, _, resource_id = resource_name.split("/")
     return (
-        f"https://console.cloud.google.com/agent-platform/pipelines/locations/{location}"
-        f"/schedules/{schedule_id}?project={project}"
+        f"https://console.cloud.google.com/agent-platform/pipelines/locations/{region}"
+        f"/schedules/{resource_id}?project={project}"
     )
-
-
-def _run_display_name(resource_name: str) -> str:
-    return re.sub(r"-\d{14,}$", "", resource_name.split("/")[-1])
-
-
-def _region(resource_name: str) -> str:
-    parts = resource_name.split("/")
-    loc = parts[3] if len(parts) > 3 else "?"
-    return loc.replace("europe-", "")
-
-
-def _fmt_duration(start, end) -> str:
-    if not start or not end:
-        return "-"
-    try:
-        secs = int((pendulum.instance(end) - pendulum.instance(start)).total_seconds())
-        if secs < 60:
-            return f"{secs}s"
-        if secs < 3600:
-            return f"{secs // 60}m {secs % 60:02d}s"
-        return f"{secs // 3600}h {(secs % 3600) // 60:02d}m"
-    except Exception:
-        return "-"
-
-
-def _fmt_time(ts) -> str:
-    if ts is None:
-        return "-"
-    try:
-        return pendulum.instance(ts).format("YYYY-MM-DD HH:mm")
-    except Exception:
-        return str(ts)[:16]
 
 
 def _run_dots(runs: list) -> Text:
@@ -63,3 +28,33 @@ def _run_dots(runs: list) -> Text:
         dot, style = DOT_STYLE.get(run.state.name, ("●", "dim"))
         rt.append(dot, style=style)
     return rt
+
+
+def _fmt_name(resource_name: str) -> str:
+    _, project, _, region, _, resource_id = resource_name.split("/")
+    return re.sub(r"-\d{14,}$", "", resource_id)
+
+
+def _fmt_region(resource_name: str) -> str:
+    _, project, _, region, _, resource_id = resource_name.split("/")
+    return region.replace("europe-", "")
+
+
+def _fmt_time(ts) -> str:
+    try:
+        return pendulum.instance(ts).format("YYYY-MM-DD HH:mm")
+    except Exception:
+        return "-"
+
+
+def _fmt_duration(start, end) -> str:
+    try:
+        d = pendulum.instance(end) - pendulum.instance(start)
+        h, m, s = d.hours, d.minutes, d.remaining_seconds
+        if h:
+            return f"{h}h {m:02d}m"
+        if m:
+            return f"{m}m {s:02d}s"
+        return f"{s}s"
+    except Exception:
+        return "-"

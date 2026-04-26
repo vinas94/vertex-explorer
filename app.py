@@ -15,9 +15,9 @@ from fetch_jobs import fetch_all
 from filter_parser import highlight, parse_filter
 from helpers import (
     _fmt_duration,
+    _fmt_name,
+    _fmt_region,
     _fmt_time,
-    _region,
-    _run_display_name,
     _run_dots,
     _run_url,
     _schedule_url,
@@ -274,7 +274,7 @@ class SchedulesApp(App):
             if r.schedule_name:
                 by_sched.setdefault(r.schedule_name, []).append(r)
             else:
-                loc = _region(r.name) if r.name else "?"
+                loc = _fmt_region(r.name) if r.name else "?"
                 synthetic_name = f"projects/{PROJECT}/locations/europe-{loc}/schedules/__unscheduled__"
                 by_sched.setdefault(synthetic_name, []).append(r)
 
@@ -288,7 +288,7 @@ class SchedulesApp(App):
             r
             for r in self._all_runs
             if r.state.name == "PIPELINE_STATE_FAILED"
-            and any(_run_display_name(r.name).startswith(p) for p in UA_PREFIXES)
+            and any(_fmt_name(r.name).startswith(p) for p in UA_PREFIXES)
             and (not r.end_time or pendulum.instance(r.end_time) >= cutoff)
         ]
 
@@ -354,7 +354,7 @@ class SchedulesApp(App):
                     start_cell,
                     _fmt_duration(run.start_time, run.end_time),
                     prev,
-                    _run_display_name(run.name),
+                    _fmt_name(run.name),
                     key=run.name,
                 )
             elif wide:
@@ -362,7 +362,7 @@ class SchedulesApp(App):
                     state_cell,
                     start_cell,
                     _fmt_duration(run.start_time, run.end_time),
-                    _run_display_name(run.name),
+                    _fmt_name(run.name),
                     key=run.name,
                 )
             else:
@@ -397,7 +397,7 @@ class SchedulesApp(App):
             self._all_schedules,
             key=lambda s: (
                 1 if s.get("_synthetic") else 0,
-                _region_rank.get(_region(s["name"]), -1),
+                _region_rank.get(_fmt_region(s["name"]), -1),
                 s.get("nextRunTime") or datetime.min.replace(tzinfo=timezone.utc),
             ),
             reverse=True,
@@ -407,7 +407,7 @@ class SchedulesApp(App):
             if self.active_only and state != "ACTIVE":
                 continue
             name = sched["name"]
-            if self._region and _region(name) != self._region:
+            if self._region and _fmt_region(name) != self._region:
                 continue
             display = sched.get("display_name")
             if predicate is not None and not predicate(display):
@@ -423,7 +423,7 @@ class SchedulesApp(App):
 
             recent_runs = self._runs_by_schedule.get(name, [])
             table.add_row(
-                _region(name),
+                _fmt_region(name),
                 state_cell,
                 sched.get("cron", "-") or "-",
                 _fmt_time(sched.get("nextRunTime")),
