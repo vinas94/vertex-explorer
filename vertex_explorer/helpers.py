@@ -3,7 +3,7 @@ import re
 import pendulum
 from rich.text import Text
 
-from .config import DOT_STYLE
+from .config import RUN_STATE_STYLE
 
 
 def _run_url(resource_name: str) -> str:
@@ -25,8 +25,7 @@ def _schedule_url(resource_name: str) -> str:
 def _run_dots(runs: list) -> Text:
     rt = Text()
     for run in runs[:5]:
-        dot, style = DOT_STYLE.get(run.state.name, ("●", "dim"))
-        rt.append(dot, style=style)
+        rt.append("●", style=RUN_STATE_STYLE.get(run.state.name, "dim"))
     return rt
 
 
