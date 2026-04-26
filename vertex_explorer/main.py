@@ -2,7 +2,7 @@ import os
 
 os.environ.setdefault("GRPC_VERBOSITY", "none")
 
-from app import SchedulesApp  # noqa: E402
+from .app import SchedulesApp  # noqa: E402
 
 
 def main() -> None:

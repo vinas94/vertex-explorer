@@ -3,7 +3,7 @@ import re
 import pendulum
 from rich.text import Text
 
-from config import DOT_STYLE
+from .config import DOT_STYLE
 
 
 def _run_url(resource_name: str) -> str:

@@ -10,10 +10,10 @@ from textual.containers import Horizontal
 from textual.reactive import reactive
 from textual.widgets import DataTable, Footer, Input, Label
 
-from config import PROJECT, RUN_STATE_STYLE, UA_LOOKBACK_DAYS, UA_PREFIXES
-from fetch_jobs import fetch_all
-from filter_parser import highlight, parse_filter
-from helpers import (
+from .config import RUN_STATE_STYLE
+from .fetch_jobs import fetch_all
+from .filter_parser import highlight, parse_filter
+from .helpers import (
     _fmt_duration,
     _fmt_name,
     _fmt_region,
@@ -22,6 +22,7 @@ from helpers import (
     _run_url,
     _schedule_url,
 )
+from .schedule_data import build_schedules, build_runs_index, build_ua_failed_runs
 
 
 class SchedulesApp(App):
@@ -38,21 +39,7 @@ class SchedulesApp(App):
         Binding("right", "focus_right", show=False, priority=True),
         Binding("left", "focus_left", show=False, priority=True),
     ]
-    CSS = """
-    #titlebar {
-        height: 1;
-        background: $primary-darken-1;
-        padding: 0 1;
-    }
-    #titlebar Label { height: 1; }
-    #status-left  { width: 1fr; content-align: left middle; }
-    #status-center { width: auto; content-align: center middle; text-style: bold; }
-    #status-right { width: 1fr; content-align: right middle; link-color: orange; link-style: none; }
-    #filter-input { height: 1; border: none; padding: 0 1; }
-    #content { height: 1fr; }
-    #schedules-table { width: 1fr; overflow-x: hidden; }
-    #runs-table { width: 1fr; overflow-x: hidden; }
-    """
+    CSS_PATH = "app.tcss"
 
     active_only: reactive[bool] = reactive(False)
 
@@ -247,51 +234,16 @@ class SchedulesApp(App):
         except Exception as e:
             self.call_from_thread(self._on_error, str(e))
 
-    @staticmethod
-    def _synthetic_schedule(loc: str) -> dict:
-        return {
-            "name": f"projects/{PROJECT}/locations/europe-{loc}/schedules/__unscheduled__",
-            "display_name": "Unscheduled runs",
-            "state": "-",
-            "cron": "-",
-            "nextRunTime": None,
-            "_synthetic": True,
-        }
-
     def _on_schedules_ready(self, schedules_by_loc: dict) -> None:
-        self._all_schedules = [s for sl in schedules_by_loc.values() for s in sl]
-        for loc in schedules_by_loc:
-            self._all_schedules.append(self._synthetic_schedule(loc.replace("europe-", "")))
+        self._all_schedules = build_schedules(schedules_by_loc)
         self._last_refresh = datetime.now()
         self._loading_schedules = False
         self._refresh_table()
 
     def _on_runs_ready(self, runs_by_loc: dict) -> None:
         self._all_runs = [r for rl in runs_by_loc.values() for r in rl]
-
-        by_sched: dict[str, list] = {}
-        for r in self._all_runs:
-            if r.schedule_name:
-                by_sched.setdefault(r.schedule_name, []).append(r)
-            else:
-                loc = _fmt_region(r.name) if r.name else "?"
-                synthetic_name = f"projects/{PROJECT}/locations/europe-{loc}/schedules/__unscheduled__"
-                by_sched.setdefault(synthetic_name, []).append(r)
-
-        _key = lambda r: r.start_time or datetime.min.replace(tzinfo=timezone.utc)
-        for runs in by_sched.values():
-            runs.sort(key=_key, reverse=True)
-        self._runs_by_schedule = by_sched
-
-        cutoff = pendulum.now("UTC").subtract(days=UA_LOOKBACK_DAYS)
-        self._ua_failed_runs = [
-            r
-            for r in self._all_runs
-            if r.state.name == "PIPELINE_STATE_FAILED"
-            and any(_fmt_name(r.name).startswith(p) for p in UA_PREFIXES)
-            and (not r.end_time or pendulum.instance(r.end_time) >= cutoff)
-        ]
-
+        self._runs_by_schedule = build_runs_index(self._all_runs)
+        self._ua_failed_runs = build_ua_failed_runs(self._all_runs)
         self._loading_runs = False
         self._refresh_runs_table()
         self._refresh_table()

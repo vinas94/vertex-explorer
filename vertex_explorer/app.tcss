@@ -1,0 +1,9 @@
+#titlebar { height: 1; background: $primary-darken-1; padding: 0 1; }
+#titlebar Label { height: 1; }
+#status-left  { width: 1fr; content-align: left middle; }
+#status-center { width: auto; content-align: center middle; text-style: bold; }
+#status-right { width: 1fr; content-align: right middle; link-color: orange; link-style: none; }
+#filter-input { height: 1; border: none; padding: 0 1; }
+#content { height: 1fr; }
+#schedules-table { width: 1fr; overflow-x: hidden; }
+#runs-table { width: 1fr; overflow-x: hidden; }
