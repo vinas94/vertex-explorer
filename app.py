@@ -330,8 +330,10 @@ class SchedulesApp(App):
     def _populate_runs_table(self, wide: bool, selected: str | None) -> None:
         table = self.query_one("#runs-table", DataTable)
         table.clear(columns=True)
-        if wide:
+        if self._ua_view:
             table.add_columns("Status", "Start", "Duration", "Prev", "Name")
+        elif wide:
+            table.add_columns("Status", "Start", "Duration", "Name")
         else:
             table.add_columns("Status", "Start", "Duration")
 
@@ -350,27 +352,13 @@ class SchedulesApp(App):
                 state_name == "PIPELINE_STATE_FAILED" and run.end_time and pendulum.instance(run.end_time) >= cutoff_24h
             )
             start_cell = Text(_fmt_time(run.start_time), style="red" if recent_fail else "")
-            if wide:
-                prev = (
-                    _run_dots(self._runs_by_schedule[run.schedule_name])
-                    if run.schedule_name in self._runs_by_schedule
-                    else Text()
-                )
-                table.add_row(
-                    state_cell,
-                    start_cell,
-                    _fmt_duration(run.start_time, run.end_time),
-                    prev,
-                    _run_display_name(run.name),
-                    key=run.name,
-                )
+            if self._ua_view:
+                prev = _run_dots(self._runs_by_schedule[run.schedule_name]) if run.schedule_name in self._runs_by_schedule else Text()
+                table.add_row(state_cell, start_cell, _fmt_duration(run.start_time, run.end_time), prev, _run_display_name(run.name), key=run.name)
+            elif wide:
+                table.add_row(state_cell, start_cell, _fmt_duration(run.start_time, run.end_time), _run_display_name(run.name), key=run.name)
             else:
-                table.add_row(
-                    state_cell,
-                    start_cell,
-                    _fmt_duration(run.start_time, run.end_time),
-                    key=run.name,
-                )
+                table.add_row(state_cell, start_cell, _fmt_duration(run.start_time, run.end_time), key=run.name)
 
         if self._ua_view and self._last_ua_run_key:
             for idx, row_key in enumerate(table.rows):
