@@ -45,7 +45,7 @@ class _Parser:
     def _cur(self) -> _Tok:
         return self._t[self._i]
 
-    def _eat(self) -> _Tok:
+    def _advance(self) -> _Tok:
         t = self._t[self._i]
         self._i += 1
         return t
@@ -58,7 +58,7 @@ class _Parser:
     def _expr(self) -> tuple:
         pred, terms = self._term()
         while self._cur().kind == _Tok.OR:
-            self._eat()
+            self._advance()
             rp, rt = self._term()
             lp = pred
             pred = lambda s, lp=lp, rp=rp: lp(s) or rp(s)
@@ -68,7 +68,7 @@ class _Parser:
     def _term(self) -> tuple:
         pred, terms = self._factor()
         while self._cur().kind == _Tok.AND:
-            self._eat()
+            self._advance()
             rp, rt = self._factor()
             lp = pred
             pred = lambda s, lp=lp, rp=rp: lp(s) and rp(s)
@@ -78,16 +78,16 @@ class _Parser:
     def _factor(self) -> tuple:
         cur = self._cur()
         if cur.kind == _Tok.LP:
-            self._eat()
+            self._advance()
             pred, terms = self._expr()
             if self._cur().kind == _Tok.RP:
-                self._eat()
+                self._advance()
             return pred, terms
         elif cur.kind == _Tok.WORD:
-            w = self._eat().val.lower()
+            w = self._advance().val.lower()
             return lambda s, w=w: w in s.lower(), [w]
         else:
-            self._eat()
+            self._advance()
             return lambda s: True, []
 
 

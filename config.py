@@ -9,3 +9,19 @@ UA_PREFIXES = [
     "tensorflow-audience-similarity",
     "tensorflow-win-price-prediction",
 ]
+
+DOT_STYLE = {
+    "PIPELINE_STATE_SUCCEEDED": ("●", "green"),
+    "PIPELINE_STATE_FAILED": ("●", "red"),
+    "PIPELINE_STATE_RUNNING": ("●", "cyan"),
+    "PIPELINE_STATE_CANCELLED": ("●", "yellow"),
+    "PIPELINE_STATE_CANCELLING": ("●", "yellow"),
+}
+
+RUN_STATE_STYLE = {
+    "PIPELINE_STATE_RUNNING": "cyan",
+    "PIPELINE_STATE_SUCCEEDED": "green",
+    "PIPELINE_STATE_FAILED": "red",
+    "PIPELINE_STATE_CANCELLED": "yellow",
+    "PIPELINE_STATE_CANCELLING": "yellow",
+}
