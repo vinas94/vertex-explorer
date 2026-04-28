@@ -95,7 +95,9 @@ class SchedulesApp(App):
         self._schedules = []
         self._runs_by_schedule = {}
         self.query_one("#schedules-table", DataTable).clear()
-        self.query_one("#runs-table", DataTable).clear(columns=True)
+        rt = self.query_one("#runs-table", DataTable)
+        rt.clear(columns=True)
+        rt.add_columns("Status", "Start", "Duration", "Name")
         self._update_status()
         self._load()
 
@@ -265,7 +267,10 @@ class SchedulesApp(App):
                 pass
 
         table.clear(columns=True)
-        table.add_columns("Status", "Start", "Duration", "Name")
+        if is_unscheduled:
+            table.add_columns("Status", "Start", "Duration", "Name")
+        else:
+            table.add_columns("Status", "Start", "Duration")
 
         self.query_one("#runs-table").styles.width = "1fr" if is_unscheduled else 50
 
@@ -278,9 +283,16 @@ class SchedulesApp(App):
                 state_name == "PIPELINE_STATE_FAILED" and run.end_time and pendulum.instance(run.end_time) >= cutoff_24h
             )
             start_cell = Text(_fmt_time(run.start_time), style="red" if recent_fail else "")
-            table.add_row(
-                state_cell, start_cell, _fmt_duration(run.start_time, run.end_time), fmt_name(run.name), key=run.name
-            )
+            if is_unscheduled:
+                table.add_row(
+                    state_cell,
+                    start_cell,
+                    _fmt_duration(run.start_time, run.end_time),
+                    fmt_name(run.name),
+                    key=run.name,
+                )
+            else:
+                table.add_row(state_cell, start_cell, _fmt_duration(run.start_time, run.end_time), key=run.name)
 
         if selected and selected in self._run_cursors:
             saved = self._run_cursors[selected]
