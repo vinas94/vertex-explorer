@@ -10,6 +10,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.reactive import reactive
+from textual.screen import ModalScreen
 from textual.widgets import DataTable, Footer, Input, Label
 from textual.widgets._footer import FooterKey
 
@@ -38,8 +39,8 @@ class SchedulesApp(App):
         Binding("s", "settings", "Settings"),
         Binding("q", "quit", "Quit"),
         Binding("escape", "escape", "Escape", show=False, priority=True),
-        Binding("right", "focus_right", show=False, priority=True),
-        Binding("left", "focus_left", show=False, priority=True),
+        Binding("right", "focus_right", show=False),
+        Binding("left", "focus_left", show=False),
     ]
     CSS_PATH = "app.tcss"
 
@@ -145,7 +146,7 @@ class SchedulesApp(App):
         os._exit(0)
 
     def action_escape(self) -> None:
-        if len(self.screen_stack) > 1:
+        if isinstance(self.screen, ModalScreen):
             self.pop_screen()
             return
         fi = self.query_one("#filter-input", Input)

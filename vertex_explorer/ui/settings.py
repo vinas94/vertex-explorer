@@ -1,7 +1,7 @@
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Label
+from textual.widgets import Input, Label
 
 import vertex_explorer.config as config
 
@@ -28,15 +28,9 @@ class SettingsScreen(ModalScreen[bool]):
             with Horizontal():
                 yield Label("UA Prefixes")
                 yield Input(", ".join(config.UA_PREFIXES), id="s-ua-prefixes")
-            with Horizontal(id="settings-buttons"):
-                yield Button("Save", id="btn-save", variant="primary")
-                yield Button("Cancel", id="btn-cancel")
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "btn-save":
-            self.dismiss(self._save())
-        elif event.button.id == "btn-cancel":
-            self.dismiss(False)
+    def on_input_submitted(self, _: Input.Submitted) -> None:
+        self.dismiss(self._save())
 
     def _save(self) -> bool:
         def _int(id: str, fallback: int) -> int:

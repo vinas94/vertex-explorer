@@ -13,5 +13,6 @@ FooterKey.-toggled .footer-key--description { color: $accent; }
 SettingsScreen { align: center middle; }
 #settings-dialog { width: 70%; max-width: 80; background: $surface; border: solid $primary; padding: 1 2; height: auto; }
 #settings-title { text-style: bold; }
-#settings-buttons { margin-top: 1; align-horizontal: right; }
-#settings-buttons Button { margin-left: 1; }
+#settings-dialog Horizontal { height: 1; align-vertical: middle; margin-bottom: 1; }
+#settings-dialog Label { width: 16; content-align: left middle; }
+#settings-dialog Input { width: 1fr; height: 1; border: none; padding: 0; }
