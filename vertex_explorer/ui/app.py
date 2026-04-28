@@ -1,3 +1,5 @@
+import os
+import subprocess
 import webbrowser
 from datetime import datetime, timezone
 
@@ -113,6 +115,22 @@ class SchedulesApp(App):
     def action_focus_filter(self) -> None:
         self.query_one("#filter-input", Input).focus()
 
+    def action_quit(self) -> None:
+        RESTORE_TERMINAL = (
+            "\033[?1000l"  # disable mouse click tracking
+            "\033[?1002l"  # disable mouse button-event tracking
+            "\033[?1003l"  # disable mouse all-motion tracking
+            "\033[?1006l"  # disable SGR extended mouse mode
+            "\033[?1049l"  # exit alternate screen
+            "\033[?25h"  # show cursor
+            "\033[0m"  # reset colors
+        )
+
+        with open("/dev/tty", "w") as tty:
+            tty.write(RESTORE_TERMINAL)
+        subprocess.run(["stty", "sane"], stderr=subprocess.DEVNULL)
+        os._exit(0)
+
     def action_escape(self) -> None:
         fi = self.query_one("#filter-input", Input)
         if fi.has_focus:
@@ -162,13 +180,19 @@ class SchedulesApp(App):
 
     @work(thread=True)
     def _load(self) -> None:
+        def _call(fn, *args):
+            try:
+                self.call_from_thread(fn, *args)
+            except RuntimeError:
+                pass
+
         try:
             fetch_all(
-                on_schedules=lambda s: self.call_from_thread(self._on_schedules_ready, s),
-                on_runs=lambda r: self.call_from_thread(self._on_runs_ready, r),
+                on_schedules=lambda s: _call(self._on_schedules_ready, s),
+                on_runs=lambda r: _call(self._on_runs_ready, r),
             )
         except Exception as e:
-            self.call_from_thread(self._on_error, str(e))
+            _call(self._on_error, str(e))
 
     def _on_schedules_ready(self, schedules_by_loc: dict) -> None:
         self._schedules = build_schedules(schedules_by_loc)
