@@ -1,14 +1,28 @@
+import re
 from datetime import datetime, timezone
 
 import pendulum
 
 from vertex_explorer.config import PROJECT, UA_LOOKBACK_DAYS, UA_PREFIXES
-from vertex_explorer.ui.formatters import _fmt_name, _fmt_region
+
+
+def _synthetic_name(loc: str) -> str:
+    return f"projects/{PROJECT}/locations/europe-{loc}/schedules/__unscheduled__"
+
+
+def _fmt_name(resource_name: str) -> str:
+    _, project, _, region, _, resource_id = resource_name.split("/")
+    return re.sub(r"-\d{14,}$", "", resource_id)
+
+
+def _fmt_region(resource_name: str) -> str:
+    _, project, _, region, _, resource_id = resource_name.split("/")
+    return region.replace("europe-", "")
 
 
 def synthetic_schedule(loc: str) -> dict:
     return {
-        "name": f"projects/{PROJECT}/locations/europe-{loc}/schedules/__unscheduled__",
+        "name": _synthetic_name(loc),
         "display_name": "Unscheduled runs",
         "state": "-",
         "cron": "-",
@@ -31,8 +45,7 @@ def build_runs_index(all_runs: list) -> dict[str, list]:
             by_sched.setdefault(r.schedule_name, []).append(r)
         else:
             loc = _fmt_region(r.name) if r.name else "?"
-            synthetic_name = f"projects/{PROJECT}/locations/europe-{loc}/schedules/__unscheduled__"
-            by_sched.setdefault(synthetic_name, []).append(r)
+            by_sched.setdefault(_synthetic_name(loc), []).append(r)
 
     _key = lambda r: r.start_time or datetime.min.replace(tzinfo=timezone.utc)
     for runs in by_sched.values():

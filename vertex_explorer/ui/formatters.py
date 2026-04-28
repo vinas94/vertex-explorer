@@ -1,5 +1,3 @@
-import re
-
 import pendulum
 from rich.text import Text
 
@@ -27,16 +25,6 @@ def _run_dots(runs: list) -> Text:
     for run in runs[:5]:
         rt.append("●", style=RUN_STATE_STYLE.get(run.state.name, "dim"))
     return rt
-
-
-def _fmt_name(resource_name: str) -> str:
-    _, project, _, region, _, resource_id = resource_name.split("/")
-    return re.sub(r"-\d{14,}$", "", resource_id)
-
-
-def _fmt_region(resource_name: str) -> str:
-    _, project, _, region, _, resource_id = resource_name.split("/")
-    return region.replace("europe-", "")
 
 
 def _fmt_time(ts) -> str:
