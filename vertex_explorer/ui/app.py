@@ -13,14 +13,14 @@ from textual.widgets import DataTable, Footer, Input, Label
 from vertex_explorer.client import fetch_all
 from vertex_explorer.config import RUN_STATE_STYLE
 from vertex_explorer.filters import parse_filter
-from vertex_explorer.processor import _fmt_name, _fmt_region, build_runs_index, build_schedules, build_ua_failed_runs
+from vertex_explorer.processor import build_runs_index, build_schedules, build_ua_failed_runs, fmt_name
 from vertex_explorer.ui.formatters import (
+    _console_url,
     _fmt_duration,
+    _fmt_region,
     _fmt_time,
+    _highlight,
     _run_dots,
-    _run_url,
-    _schedule_url,
-    highlight,
 )
 
 
@@ -147,7 +147,7 @@ class SchedulesApp(App):
         try:
             name = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
             if name and not name.endswith("/__unscheduled__"):
-                webbrowser.open(_schedule_url(name))
+                webbrowser.open(_console_url(name, "schedules"))
         except Exception:
             pass
 
@@ -158,7 +158,7 @@ class SchedulesApp(App):
         try:
             name = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
             if name:
-                webbrowser.open(_run_url(name))
+                webbrowser.open(_console_url(name, "runs"))
         except Exception:
             pass
 
@@ -305,7 +305,7 @@ class SchedulesApp(App):
                     start_cell,
                     _fmt_duration(run.start_time, run.end_time),
                     prev,
-                    _fmt_name(run.name),
+                    fmt_name(run.name),
                     key=run.name,
                 )
             elif wide:
@@ -313,7 +313,7 @@ class SchedulesApp(App):
                     state_cell,
                     start_cell,
                     _fmt_duration(run.start_time, run.end_time),
-                    _fmt_name(run.name),
+                    fmt_name(run.name),
                     key=run.name,
                 )
             else:
@@ -367,7 +367,7 @@ class SchedulesApp(App):
             if sched.get("_synthetic"):
                 name_cell = Text(display, style="italic dim")
             elif terms:
-                name_cell = highlight(display, terms)
+                name_cell = _highlight(display, terms)
             else:
                 name_cell = display
             state_cell = Text(state, style="green" if state == "ACTIVE" else "dim")
