@@ -11,9 +11,10 @@ FooterKey.-toggled .footer-key--key { background: $accent; color: $text; }
 FooterKey.-toggled .footer-key--description { color: $accent; }
 
 SettingsScreen { align: center middle; }
-#settings-dialog { width: 73; height: 13; background: $surface; border: solid $primary; padding: 1 2; }
-#settings-title { text-style: bold; }
-#settings-hint { text-style: italic; color: $text-muted; margin-top: 1; }
+#settings-dialog { width: 73; height: 11; background: $surface; border: solid $primary; padding: 1 2; }
+#settings-header { height: 1; margin-bottom: 1; }
+#settings-title { text-style: bold; width: 1fr; }
+#settings-hint { text-style: italic; color: $text-muted; width: auto; content-align: right middle; }
 .settings-col:first-of-type { width: 22; }
 .settings-col:last-of-type { width: 45; margin-left: 2; }
 .setting-row { height: 1; margin-bottom: 1; }

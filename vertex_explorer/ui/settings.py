@@ -37,7 +37,9 @@ class SettingsScreen(ModalScreen[bool]):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="settings-dialog"):
-            yield Label("Settings", id="settings-title")
+            with Horizontal(id="settings-header"):
+                yield Label("Settings", id="settings-title")
+                yield Label("shift+enter to save", id="settings-hint")
             with Horizontal(id="settings-columns"):
                 with Vertical(classes="settings-col"):
                     for (lbl, id_), _ in _GRID:
@@ -49,12 +51,19 @@ class SettingsScreen(ModalScreen[bool]):
                         with Horizontal(classes="setting-row"):
                             yield Label(lbl, classes="setting-label")
                             yield _NavInput(_current_value(id_), id=id_)
-            yield Label("shift+enter to save", id="settings-hint")
 
     def on_mount(self) -> None:
         self._highlight()
 
     def on_key(self, event) -> None:
+        if event.key in ("ctrl+j", "shift+enter"):
+            self.set_focus(None)
+            needs_refresh, any_changed = self._save()
+            if any_changed:
+                self.app.notify("Settings updated")
+            self.dismiss(needs_refresh)
+            event.stop()
+            return
         if self.focused is not None:
             return
         row, col = self.cursor
@@ -70,11 +79,6 @@ class SettingsScreen(ModalScreen[bool]):
             inp = self.query_one(f"#{_GRID[row][col][1]}", Input)
             inp.can_focus = True
             inp.focus()
-        elif event.key in ("ctrl+j", "shift+enter"):
-            needs_refresh, any_changed = self._save()
-            if any_changed:
-                self.app.notify("Settings updated")
-            self.dismiss(needs_refresh)
         else:
             return
         event.stop()
