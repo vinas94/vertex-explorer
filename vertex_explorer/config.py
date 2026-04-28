@@ -15,6 +15,8 @@ LOCATIONS = ["europe-west3", "europe-west4"]
 RUNS_DAYS = 28
 SCHEDULES_DAYS = 7
 
+RUNS_PAGE_SIZE = 100
+
 UA_LOOKBACK_DAYS = 7
 UA_PREFIXES = [
     "go-model-treebased-install-prediction",

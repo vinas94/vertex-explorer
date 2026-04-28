@@ -14,7 +14,7 @@ from textual.widgets import DataTable, Footer, Input, Label
 from textual.widgets._footer import FooterKey
 
 from vertex_explorer.client import fetch_all
-from vertex_explorer.config import LOCATIONS, RUN_STATE_STYLE
+from vertex_explorer.config import LOCATIONS, RUN_STATE_STYLE, RUNS_PAGE_SIZE
 from vertex_explorer.filters import parse_filter
 from vertex_explorer.processor import build_runs_index, build_schedules, fmt_name
 from vertex_explorer.ui.formatters import (
@@ -53,6 +53,7 @@ class SchedulesApp(App):
         self._loading_runs = False
         self._suppress_highlight = False
         self._run_cursors: dict[str, str] = {}
+        self._run_offsets: dict[str, int] = {}
         self._current_schedule: str | None = None
 
     # ── layout ────────────────────────────────────────────────────────────────
@@ -175,9 +176,15 @@ class SchedulesApp(App):
         self.query_one("#schedules-table", DataTable).focus()
 
     @on(DataTable.RowHighlighted, "#schedules-table")
-    def _on_schedule_highlighted(self, _: DataTable.RowHighlighted) -> None:
-        if not self._suppress_highlight:
+    def _on_schedule_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        if not self._suppress_highlight and event.row_key.value != self._current_schedule:
             self._repopulate_runs()
+
+    @on(DataTable.RowHighlighted, "#runs-table")
+    def _on_run_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        table = self.query_one("#runs-table", DataTable)
+        if self._current_schedule and event.cursor_row == table.row_count - 1:
+            self._load_more_runs()
 
     # ── data loading ──────────────────────────────────────────────────────────
 
@@ -307,9 +314,34 @@ class SchedulesApp(App):
         else:
             table.add_columns("Status", "Start", "Duration")
 
-        self.query_one("#runs-table").styles.width = "1fr" if is_unscheduled else 50
+        self.query_one("#runs-table").set_class(not is_unscheduled, "-scheduled")
 
-        runs = self._runs_by_schedule.get(selected, []) if selected else []
+        all_runs = self._runs_by_schedule.get(selected, []) if selected else []
+        self._run_offsets[selected] = RUNS_PAGE_SIZE if selected else 0
+        self._append_run_rows(table, all_runs[:RUNS_PAGE_SIZE], is_unscheduled)
+
+        if selected and selected in self._run_cursors:
+            saved = self._run_cursors[selected]
+            for idx, row_key in enumerate(table.rows):
+                if row_key.value == saved:
+                    table.move_cursor(row=idx)
+                    break
+
+        self._current_schedule = selected
+
+    def _load_more_runs(self) -> None:
+        selected = self._current_schedule
+        all_runs = self._runs_by_schedule.get(selected, [])
+        offset = self._run_offsets.get(selected, 0)
+        batch = all_runs[offset : offset + RUNS_PAGE_SIZE]
+        if not batch:
+            return
+        is_unscheduled = selected.endswith("/__unscheduled__")
+        table = self.query_one("#runs-table", DataTable)
+        self._append_run_rows(table, batch, is_unscheduled)
+        self._run_offsets[selected] = offset + len(batch)
+
+    def _append_run_rows(self, table: DataTable, runs: list, is_unscheduled: bool) -> None:
         cutoff_24h = pendulum.now("UTC").subtract(hours=24)
         for run in runs:
             state_name = run.state.name
@@ -328,15 +360,6 @@ class SchedulesApp(App):
                 )
             else:
                 table.add_row(state_cell, start_cell, _fmt_duration(run.start_time, run.end_time), key=run.name)
-
-        if selected and selected in self._run_cursors:
-            saved = self._run_cursors[selected]
-            for idx, row_key in enumerate(table.rows):
-                if row_key.value == saved:
-                    table.move_cursor(row=idx)
-                    break
-
-        self._current_schedule = selected
 
     def _selected_schedule(self) -> str | None:
         try:
