@@ -130,18 +130,16 @@ class SchedulesApp(App):
         self.query_one("#filter-input", Input).focus()
 
     def action_quit(self) -> None:
-        RESTORE_TERMINAL = (
-            "\033[?1000l"  # disable mouse click tracking
-            "\033[?1002l"  # disable mouse button-event tracking
-            "\033[?1003l"  # disable mouse all-motion tracking
-            "\033[?1006l"  # disable SGR extended mouse mode
-            "\033[?1049l"  # exit alternate screen
-            "\033[?25h"  # show cursor
-            "\033[0m"  # reset colors
-        )
-
         with open("/dev/tty", "w") as tty:
-            tty.write(RESTORE_TERMINAL)
+            tty.write(
+                "\033[?1000l"  # disable mouse click tracking
+                "\033[?1002l"  # disable mouse button-event tracking
+                "\033[?1003l"  # disable mouse all-motion tracking
+                "\033[?1006l"  # disable SGR extended mouse mode
+                "\033[?1049l"  # exit alternate screen
+                "\033[?25h"  # show cursor
+                "\033[0m"  # reset colors
+            )
         subprocess.run(["stty", "sane"], stderr=subprocess.DEVNULL)
         os._exit(0)
 

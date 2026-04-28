@@ -15,16 +15,21 @@ class _NavInput(Input):
 
 
 _GRID = [
-    [("Runs Days", str(config.RUNS_DAYS), "s-runs-days"), ("Project", config.PROJECT, "s-project")],
-    [
-        ("Schedules Days", str(config.SCHEDULES_DAYS), "s-schedules-days"),
-        ("Locations", ", ".join(config.LOCATIONS), "s-locations"),
-    ],
-    [
-        ("Runs Page Size", str(config.RUNS_PAGE_SIZE), "s-runs-page-size"),
-        ("UA Prefixes", ", ".join(config.UA_PREFIXES), "s-ua-prefixes"),
-    ],
+    [("Runs Days", "s-runs-days"), ("Project", "s-project")],
+    [("Schedules Days", "s-schedules-days"), ("Locations", "s-locations")],
+    [("Runs Page Size", "s-runs-page-size"), ("UA Prefixes", "s-ua-prefixes")],
 ]
+
+
+def _current_value(id_: str) -> str:
+    return {
+        "s-runs-days": str(config.RUNS_DAYS),
+        "s-project": config.PROJECT,
+        "s-schedules-days": str(config.SCHEDULES_DAYS),
+        "s-locations": ", ".join(config.LOCATIONS),
+        "s-runs-page-size": str(config.RUNS_PAGE_SIZE),
+        "s-ua-prefixes": ", ".join(config.UA_PREFIXES),
+    }[id_]
 
 
 class SettingsScreen(ModalScreen[bool]):
@@ -35,15 +40,16 @@ class SettingsScreen(ModalScreen[bool]):
             yield Label("Settings", id="settings-title")
             with Horizontal(id="settings-columns"):
                 with Vertical(classes="settings-col"):
-                    for (lbl, val, id_), _ in _GRID:
+                    for (lbl, id_), _ in _GRID:
                         with Horizontal(classes="setting-row"):
                             yield Label(lbl, classes="setting-label")
-                            yield _NavInput(val, id=id_)
+                            yield _NavInput(_current_value(id_), id=id_)
                 with Vertical(classes="settings-col"):
-                    for _, (lbl, val, id_) in _GRID:
+                    for _, (lbl, id_) in _GRID:
                         with Horizontal(classes="setting-row"):
                             yield Label(lbl, classes="setting-label")
-                            yield _NavInput(val, id=id_)
+                            yield _NavInput(_current_value(id_), id=id_)
+            yield Label("shift+enter to save", id="settings-hint")
 
     def on_mount(self) -> None:
         self._highlight()
@@ -61,19 +67,20 @@ class SettingsScreen(ModalScreen[bool]):
         elif event.key == "right":
             self.cursor = (row, min(1, col + 1))
         elif event.key == "enter":
-            inp = self.query_one(f"#{_GRID[row][col][2]}", Input)
+            inp = self.query_one(f"#{_GRID[row][col][1]}", Input)
             inp.can_focus = True
             inp.focus()
+        elif event.key in ("ctrl+j", "shift+enter"):
+            needs_refresh, any_changed = self._save()
+            if any_changed:
+                self.app.notify("Settings updated")
+            self.dismiss(needs_refresh)
         else:
             return
         event.stop()
 
     def on_input_submitted(self, _: Input.Submitted) -> None:
         self.set_focus(None)
-        self.dismiss(self._save())
-
-    def on_focus(self, _) -> None:
-        self._highlight()
 
     def watch_cursor(self) -> None:
         self._highlight()
@@ -81,10 +88,10 @@ class SettingsScreen(ModalScreen[bool]):
     def _highlight(self) -> None:
         row, col = self.cursor
         for r, pair in enumerate(_GRID):
-            for c, (_, _, id_) in enumerate(pair):
+            for c, (_, id_) in enumerate(pair):
                 self.query_one(f"#{id_}").set_class(r == row and c == col, "-cursor")
 
-    def _save(self) -> bool:
+    def _save(self) -> tuple[bool, bool]:
         def _int(id: str, fallback: int) -> int:
             try:
                 return int(self.query_one(id, Input).value.strip())
@@ -98,6 +105,8 @@ class SettingsScreen(ModalScreen[bool]):
         new_locations = _list("#s-locations")
         new_runs_days = _int("#s-runs-days", config.RUNS_DAYS)
         new_schedules_days = _int("#s-schedules-days", config.SCHEDULES_DAYS)
+        new_runs_page_size = _int("#s-runs-page-size", config.RUNS_PAGE_SIZE)
+        new_ua_prefixes = _list("#s-ua-prefixes")
 
         needs_refresh = (
             new_project != config.PROJECT
@@ -105,12 +114,15 @@ class SettingsScreen(ModalScreen[bool]):
             or new_runs_days != config.RUNS_DAYS
             or new_schedules_days != config.SCHEDULES_DAYS
         )
+        any_changed = (
+            needs_refresh or new_runs_page_size != config.RUNS_PAGE_SIZE or new_ua_prefixes != config.UA_PREFIXES
+        )
 
         config.PROJECT = new_project
         config.LOCATIONS = new_locations
         config.RUNS_DAYS = new_runs_days
         config.SCHEDULES_DAYS = new_schedules_days
-        config.RUNS_PAGE_SIZE = _int("#s-runs-page-size", config.RUNS_PAGE_SIZE)
-        config.UA_PREFIXES = _list("#s-ua-prefixes")
+        config.RUNS_PAGE_SIZE = new_runs_page_size
+        config.UA_PREFIXES = new_ua_prefixes
 
-        return needs_refresh
+        return needs_refresh, any_changed
