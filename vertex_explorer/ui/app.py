@@ -25,6 +25,7 @@ from vertex_explorer.ui.formatters import (
     _highlight,
     _run_dots,
 )
+from vertex_explorer.ui.settings import SettingsScreen
 
 
 class SchedulesApp(App):
@@ -34,6 +35,7 @@ class SchedulesApp(App):
         Binding("r", "toggle_region", "Region"),
         Binding("a", "toggle_active", "Active"),
         Binding("o", "open", "Open"),
+        Binding("s", "settings", "Settings"),
         Binding("q", "quit", "Quit"),
         Binding("escape", "escape", "Escape", show=False, priority=True),
         Binding("right", "focus_right", show=False, priority=True),
@@ -116,6 +118,13 @@ class SchedulesApp(App):
         self._repopulate_schedules()
         self._update_binding_highlights()
 
+    def action_settings(self) -> None:
+        def _on_dismiss(saved: bool) -> None:
+            if saved:
+                self.action_refresh()
+
+        self.push_screen(SettingsScreen(), _on_dismiss)
+
     def action_focus_filter(self) -> None:
         self.query_one("#filter-input", Input).focus()
 
@@ -136,6 +145,9 @@ class SchedulesApp(App):
         os._exit(0)
 
     def action_escape(self) -> None:
+        if len(self.screen_stack) > 1:
+            self.pop_screen()
+            return
         fi = self.query_one("#filter-input", Input)
         if fi.has_focus:
             self.query_one("#schedules-table", DataTable).focus()

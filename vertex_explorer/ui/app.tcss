@@ -9,3 +9,9 @@
 #runs-table.-scheduled { width: 23%; }
 FooterKey.-toggled .footer-key--key { background: $accent; color: $text; }
 FooterKey.-toggled .footer-key--description { color: $accent; }
+
+SettingsScreen { align: center middle; }
+#settings-dialog { width: 70%; max-width: 80; background: $surface; border: solid $primary; padding: 1 2; height: auto; }
+#settings-title { text-style: bold; }
+#settings-buttons { margin-top: 1; align-horizontal: right; }
+#settings-buttons Button { margin-left: 1; }
