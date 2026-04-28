@@ -64,8 +64,9 @@ class _Parser:
 
     def _term(self) -> tuple:
         pred, terms = self._factor()
-        while self._cur().kind == _Tok.AND:
-            self._advance()
+        while self._cur().kind in (_Tok.AND, _Tok.WORD, _Tok.LP):
+            if self._cur().kind == _Tok.AND:
+                self._advance()
             rp, rt = self._factor()
             lp = pred
             pred = lambda s, lp=lp, rp=rp: lp(s) and rp(s)
