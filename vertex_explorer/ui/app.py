@@ -265,13 +265,9 @@ class SchedulesApp(App):
                 pass
 
         table.clear(columns=True)
-        if is_unscheduled:
-            table.add_columns("Status", "Start", "Duration", "Name")
-        else:
-            table.add_columns("Status", "Start", "Duration")
+        table.add_columns("Status", "Start", "Duration", "Name")
 
-        runs_widget = self.query_one("#runs-table")
-        runs_widget.styles.width = "1fr" if is_unscheduled else 50
+        self.query_one("#runs-table").styles.width = "1fr" if is_unscheduled else 50
 
         runs = self._runs_by_schedule.get(selected, []) if selected else []
         cutoff_24h = pendulum.now("UTC").subtract(hours=24)
@@ -282,11 +278,9 @@ class SchedulesApp(App):
                 state_name == "PIPELINE_STATE_FAILED" and run.end_time and pendulum.instance(run.end_time) >= cutoff_24h
             )
             start_cell = Text(_fmt_time(run.start_time), style="red" if recent_fail else "")
-            duration = _fmt_duration(run.start_time, run.end_time)
-            if is_unscheduled:
-                table.add_row(state_cell, start_cell, duration, fmt_name(run.name), key=run.name)
-            else:
-                table.add_row(state_cell, start_cell, duration, key=run.name)
+            table.add_row(
+                state_cell, start_cell, _fmt_duration(run.start_time, run.end_time), fmt_name(run.name), key=run.name
+            )
 
         if selected and selected in self._run_cursors:
             saved = self._run_cursors[selected]
