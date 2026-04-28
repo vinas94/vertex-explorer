@@ -2,17 +2,13 @@ import os
 
 os.environ.setdefault("GRPC_VERBOSITY", "none")
 
-from vertex_explorer.ui.app import SchedulesApp  # noqa: E402
+import logging
+
+from vertex_explorer.ui.app import SchedulesApp
 
 
-def main() -> None:
-    import logging
-
-    _devnull = open(os.devnull, "w")
-    for _h in logging.root.handlers:
-        if hasattr(_h, "stream"):
-            _h.stream = _devnull
-
+def main():
+    logging.root.handlers.clear()
     SchedulesApp().run()
 
 

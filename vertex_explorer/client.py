@@ -6,14 +6,14 @@ import pendulum
 from google.cloud import aiplatform_v1
 from google.protobuf import field_mask_pb2
 
-from vertex_explorer.config import PROJECT, RUNS_DAYS, SCHEDULES_DAYS
+from vertex_explorer.config import LOCATIONS, PROJECT, RUNS_DAYS, SCHEDULES_DAYS
 
 log = logging.getLogger(__name__)
 
 RUN_READ_MASK = field_mask_pb2.FieldMask(paths=["name", "start_time", "end_time", "state", "schedule_name"])
 
 
-def fetch_location_runs(location: str, filter_str: str) -> tuple[str, list]:
+def fetch_location_runs(location: str, filter_str: str) -> list:
     client = aiplatform_v1.PipelineServiceClient(
         client_options={"api_endpoint": f"{location}-aiplatform.googleapis.com"}
     )
@@ -25,10 +25,10 @@ def fetch_location_runs(location: str, filter_str: str) -> tuple[str, list]:
     log.info(f"{location}: start fetching runs")
     runs = list(client.list_pipeline_jobs(request))
     log.info(f"{location}: {len(runs)} runs retrieved")
-    return location, runs
+    return runs
 
 
-def fetch_location_schedules(location: str, filter_str: str) -> tuple[str, list]:
+def fetch_location_schedules(location: str, filter_str: str) -> list:
     client = aiplatform_v1.ScheduleServiceClient(
         client_options={"api_endpoint": f"{location}-aiplatform.googleapis.com"}
     )
@@ -48,7 +48,7 @@ def fetch_location_schedules(location: str, filter_str: str) -> tuple[str, list]
         for s in client.list_schedules(request)
     ]
     log.info(f"{location}: {len(schedules)} schedules retrieved")
-    return location, schedules
+    return schedules
 
 
 def fetch_all(on_schedules=None, on_runs=None) -> dict:
@@ -61,30 +61,32 @@ def fetch_all(on_schedules=None, on_runs=None) -> dict:
     lock_runs = threading.Lock()
 
     def _on_sched_done(loc, future):
-        _, data = future.result()
+        try:
+            data = future.result()
+        except Exception as e:
+            log.error(f"{loc}: failed to fetch schedules: {e}")
+            raise
         with lock_sched:
             schedules[loc] = data
-            if len(schedules) == 2 and on_schedules:
+            if len(schedules) == len(LOCATIONS) and on_schedules:
                 on_schedules(dict(schedules))
 
     def _on_runs_done(loc, future):
-        _, data = future.result()
+        try:
+            data = future.result()
+        except Exception as e:
+            log.error(f"{loc}: failed to fetch runs: {e}")
+            raise
         with lock_runs:
             runs[loc] = data
-            if len(runs) == 2 and on_runs:
+            if len(runs) == len(LOCATIONS) and on_runs:
                 on_runs(dict(runs))
 
-    # 3 workers: sched_w3, sched_w4, runs_w3 start immediately.
-    # runs_w4 is queued and picked up by whichever worker finishes first.
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        f_sched_w3 = executor.submit(fetch_location_schedules, "europe-west3", schedules_filter)
-        f_sched_w4 = executor.submit(fetch_location_schedules, "europe-west4", schedules_filter)
-        f_runs_w3 = executor.submit(fetch_location_runs, "europe-west3", runs_filter)
-        f_runs_w4 = executor.submit(fetch_location_runs, "europe-west4", runs_filter)
-
-        f_sched_w3.add_done_callback(lambda f: _on_sched_done("europe-west3", f))
-        f_sched_w4.add_done_callback(lambda f: _on_sched_done("europe-west4", f))
-        f_runs_w3.add_done_callback(lambda f: _on_runs_done("europe-west3", f))
-        f_runs_w4.add_done_callback(lambda f: _on_runs_done("europe-west4", f))
+    with ThreadPoolExecutor(max_workers=len(LOCATIONS) * 2 - 1) as executor:
+        for loc in LOCATIONS:
+            fs = executor.submit(fetch_location_schedules, loc, schedules_filter)
+            fr = executor.submit(fetch_location_runs, loc, runs_filter)
+            fs.add_done_callback(lambda f, loc=loc: _on_sched_done(loc, f))
+            fr.add_done_callback(lambda f, loc=loc: _on_runs_done(loc, f))
 
     return {"runs": runs, "schedules": schedules}
