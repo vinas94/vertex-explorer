@@ -13,7 +13,7 @@ from textual.widgets import DataTable, Footer, Input, Label
 from vertex_explorer.client import fetch_all
 from vertex_explorer.config import LOCATIONS, RUN_STATE_STYLE
 from vertex_explorer.filters import parse_filter
-from vertex_explorer.processor import build_runs_index, build_schedules, build_ua_failed_runs, fmt_name
+from vertex_explorer.processor import build_runs_index, build_schedules, fmt_name
 from vertex_explorer.ui.formatters import (
     _console_url,
     _fmt_duration,
@@ -30,9 +30,7 @@ class SchedulesApp(App):
         Binding("r", "toggle_region", "Region"),
         Binding("f", "focus_filter", "Filter"),
         Binding("a", "toggle_active_only", "Active"),
-        Binding("d", "toggle_ua_view", "Failed", priority=True),
-        Binding("o", "open_browser", "Open schedule"),
-        Binding("O", "open_run", "Open run"),
+        Binding("o", "open", "Open"),
         Binding("q", "quit", "Quit"),
         Binding("escape", "escape", "Escape", show=False, priority=True),
         Binding("right", "focus_right", show=False, priority=True),
@@ -44,18 +42,17 @@ class SchedulesApp(App):
 
     def __init__(self) -> None:
         super().__init__()
-        self._all_schedules: list[dict] = []
-        self._all_runs: list = []
-        self._last_refresh: datetime | None = None
-        self._loading_schedules: bool = False
-        self._loading_runs: bool = False
+        self._schedules: list[dict] = []
         self._runs_by_schedule: dict[str, list] = {}
+        self._last_refresh: datetime | None = None
+        self._loading_schedules = False
+        self._loading_runs = False
         self._region: str | None = None
-        self._ua_failed_runs: list = []
-        self._ua_view: bool = False
-        self._suppress_row_highlight: bool = False
-        self._pre_ua_focus: str | None = None
-        self._last_ua_run_key: str | None = None
+        self._suppress_highlight = False
+        self._run_cursors: dict[str, str] = {}
+        self._current_schedule: str | None = None
+
+    # ── layout ────────────────────────────────────────────────────────────────
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
@@ -84,7 +81,6 @@ class SchedulesApp(App):
         st.focus()
 
         rt = self.query_one("#runs-table", DataTable)
-        rt.add_columns("Status", "Start", "Duration", "Prev", "Name")
         rt.cursor_type = "row"
 
         self.action_refresh()
@@ -96,94 +92,60 @@ class SchedulesApp(App):
             return
         self._loading_schedules = True
         self._loading_runs = True
-        self._all_schedules = []
-        self._all_runs = []
+        self._schedules = []
         self._runs_by_schedule = {}
         self.query_one("#schedules-table", DataTable).clear()
-        self.query_one("#runs-table", DataTable).clear()
-        self._update_bar()
+        self.query_one("#runs-table", DataTable).clear(columns=True)
+        self._update_status()
         self._load()
-
-    def action_focus_filter(self) -> None:
-        self.query_one("#filter-input", Input).focus()
-
-    def action_toggle_ua_view(self) -> None:
-        if not self._ua_view:
-            focused = self.focused
-            self._pre_ua_focus = focused.id if focused else None
-            self._ua_view = True
-            self._refresh_runs_table()
-            self.call_after_refresh(lambda: self.query_one("#runs-table", DataTable).focus())
-        else:
-            try:
-                rt = self.query_one("#runs-table", DataTable)
-                self._last_ua_run_key = rt.coordinate_to_cell_key(rt.cursor_coordinate).row_key.value
-            except Exception:
-                pass
-            self._ua_view = False
-            self._refresh_runs_table()
-            if self._pre_ua_focus:
-                try:
-                    self.query_one(f"#{self._pre_ua_focus}").focus()
-                except Exception:
-                    self.query_one("#schedules-table", DataTable).focus()
-            else:
-                self.query_one("#schedules-table", DataTable).focus()
-        self._update_bar()
 
     def action_toggle_region(self) -> None:
         cycle = dict(zip([None, *LOCATIONS], [*LOCATIONS, None]))
         self._region = cycle[self._region]
-        self._refresh_table()
+        self._repopulate_schedules()
 
     def action_toggle_active_only(self) -> None:
         self.active_only = not self.active_only
-        self._refresh_table()
+        self._repopulate_schedules()
 
-    def action_open_browser(self) -> None:
-        table = self.query_one("#schedules-table", DataTable)
-        if not table.rows:
-            return
-        try:
-            name = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
-            if name and not name.endswith("/__unscheduled__"):
-                webbrowser.open(_console_url(name, "schedules"))
-        except Exception:
-            pass
-
-    def action_open_run(self) -> None:
-        table = self.query_one("#runs-table", DataTable)
-        if not table.rows:
-            return
-        try:
-            name = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
-            if name:
-                webbrowser.open(_console_url(name, "runs"))
-        except Exception:
-            pass
-
-    def action_focus_right(self) -> None:
-        st = self.query_one("#schedules-table", DataTable)
-        rt = self.query_one("#runs-table", DataTable)
-        if st.has_focus:
-            rt.focus()
-
-    def action_focus_left(self) -> None:
-        st = self.query_one("#schedules-table", DataTable)
-        rt = self.query_one("#runs-table", DataTable)
-        if rt.has_focus:
-            st.focus()
+    def action_focus_filter(self) -> None:
+        self.query_one("#filter-input", Input).focus()
 
     def action_escape(self) -> None:
         fi = self.query_one("#filter-input", Input)
         if fi.has_focus:
             self.query_one("#schedules-table", DataTable).focus()
 
+    def action_open(self) -> None:
+        st = self.query_one("#schedules-table", DataTable)
+        rt = self.query_one("#runs-table", DataTable)
+        try:
+            if st.has_focus:
+                name = st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
+                if name and not name.endswith("/__unscheduled__"):
+                    webbrowser.open(_console_url(name, "schedules"))
+            elif rt.has_focus:
+                name = rt.coordinate_to_cell_key(rt.cursor_coordinate).row_key.value
+                if name:
+                    webbrowser.open(_console_url(name, "runs"))
+        except Exception:
+            pass
+
+    def action_focus_right(self) -> None:
+        st = self.query_one("#schedules-table", DataTable)
+        if st.has_focus:
+            self.query_one("#runs-table", DataTable).focus()
+
+    def action_focus_left(self) -> None:
+        rt = self.query_one("#runs-table", DataTable)
+        if rt.has_focus:
+            self.query_one("#schedules-table", DataTable).focus()
+
     # ── events ────────────────────────────────────────────────────────────────
 
     @on(Input.Changed, "#filter-input")
     def _on_filter_changed(self, _: Input.Changed) -> None:
-        self._refresh_table()
+        self._repopulate_schedules()
 
     @on(Input.Submitted, "#filter-input")
     def _on_filter_submitted(self, _: Input.Submitted) -> None:
@@ -191,37 +153,10 @@ class SchedulesApp(App):
 
     @on(DataTable.RowHighlighted, "#schedules-table")
     def _on_schedule_highlighted(self, _: DataTable.RowHighlighted) -> None:
-        if not self._suppress_row_highlight:
-            self._refresh_runs_table()
+        if not self._suppress_highlight:
+            self._repopulate_runs()
 
-    @on(DataTable.RowSelected, "#runs-table")
-    def _on_run_selected(self, event: DataTable.RowSelected) -> None:
-        if not self._ua_view:
-            return
-        run_name = event.row_key.value if event.row_key else None
-        if not run_name:
-            return
-        run = next((r for r in self._ua_failed_runs if r.name == run_name), None)
-        if not run or not run.schedule_name:
-            return
-        self._last_ua_run_key = run_name
-        self._ua_view = False
-        self._update_bar()
-        st = self.query_one("#schedules-table", DataTable)
-        for idx, row_key in enumerate(st.rows):
-            if row_key.value == run.schedule_name:
-                self._suppress_row_highlight = True
-                st.move_cursor(row=idx)
-                st.focus()
-
-                def _after():
-                    self._suppress_row_highlight = False
-                    self._refresh_runs_table()
-
-                self.call_after_refresh(_after)
-                break
-
-    # ── worker ────────────────────────────────────────────────────────────────
+    # ── data loading ──────────────────────────────────────────────────────────
 
     @work(thread=True)
     def _load(self) -> None:
@@ -234,19 +169,18 @@ class SchedulesApp(App):
             self.call_from_thread(self._on_error, str(e))
 
     def _on_schedules_ready(self, schedules_by_loc: dict) -> None:
-        self._all_schedules = build_schedules(schedules_by_loc)
+        self._schedules = build_schedules(schedules_by_loc)
         self._last_refresh = datetime.now()
         self._loading_schedules = False
-        self._refresh_table()
+        self._repopulate_schedules()
 
     def _on_runs_ready(self, runs_by_loc: dict) -> None:
-        self._all_runs = [r for rl in runs_by_loc.values() for r in rl]
-        self._runs_by_schedule = build_runs_index(self._all_runs)
-        self._ua_failed_runs = build_ua_failed_runs(self._all_runs)
+        all_runs = [r for rl in runs_by_loc.values() for r in rl]
+        self._runs_by_schedule = build_runs_index(all_runs)
         self._loading_runs = False
-        self._refresh_runs_table()
-        self._refresh_table()
-        self._update_bar()
+        self._repopulate_schedules()
+        self._repopulate_runs()
+        self._update_status()
 
     def _on_error(self, msg: str) -> None:
         self._loading_schedules = False
@@ -256,83 +190,7 @@ class SchedulesApp(App):
 
     # ── rendering ─────────────────────────────────────────────────────────────
 
-    def _refresh_runs_table(self) -> None:
-        selected = self._selected_schedule_name()
-        is_unscheduled = selected is not None and selected.endswith("/__unscheduled__")
-        wide = self._ua_view or is_unscheduled
-
-        runs_widget = self.query_one("#runs-table")
-        new_width = "1fr" if wide else 50
-        if runs_widget.styles.width != new_width:
-            runs_widget.styles.width = new_width
-
-        self.query_one("#runs-table", DataTable).clear(columns=True)
-        self.call_after_refresh(self._populate_runs_table, wide, selected)
-
-    def _populate_runs_table(self, wide: bool, selected: str | None) -> None:
-        table = self.query_one("#runs-table", DataTable)
-        table.clear(columns=True)
-        if self._ua_view:
-            table.add_columns("Status", "Start", "Duration", "Prev", "Name")
-        elif wide:
-            table.add_columns("Status", "Start", "Duration", "Name")
-        else:
-            table.add_columns("Status", "Start", "Duration")
-
-        runs = self._ua_failed_runs if self._ua_view else (self._runs_by_schedule.get(selected, []) if selected else [])
-        sorted_runs = sorted(
-            runs,
-            key=lambda r: r.start_time or datetime.min.replace(tzinfo=timezone.utc),
-            reverse=True,
-        )
-        cutoff_24h = pendulum.now("UTC").subtract(hours=24)
-        for run in sorted_runs:
-            state_name = run.state.name
-            short_state = state_name.replace("PIPELINE_STATE_", "")
-            state_cell = Text(short_state, style=RUN_STATE_STYLE.get(state_name, "dim"))
-            recent_fail = (
-                state_name == "PIPELINE_STATE_FAILED" and run.end_time and pendulum.instance(run.end_time) >= cutoff_24h
-            )
-            start_cell = Text(_fmt_time(run.start_time), style="red" if recent_fail else "")
-            if self._ua_view:
-                prev = (
-                    _run_dots(self._runs_by_schedule[run.schedule_name])
-                    if run.schedule_name in self._runs_by_schedule
-                    else Text()
-                )
-                table.add_row(
-                    state_cell,
-                    start_cell,
-                    _fmt_duration(run.start_time, run.end_time),
-                    prev,
-                    fmt_name(run.name),
-                    key=run.name,
-                )
-            elif wide:
-                table.add_row(
-                    state_cell,
-                    start_cell,
-                    _fmt_duration(run.start_time, run.end_time),
-                    fmt_name(run.name),
-                    key=run.name,
-                )
-            else:
-                table.add_row(state_cell, start_cell, _fmt_duration(run.start_time, run.end_time), key=run.name)
-
-        if self._ua_view and self._last_ua_run_key:
-            for idx, row_key in enumerate(table.rows):
-                if row_key.value == self._last_ua_run_key:
-                    table.move_cursor(row=idx)
-                    break
-
-    def _selected_schedule_name(self) -> str | None:
-        try:
-            st = self.query_one("#schedules-table", DataTable)
-            return st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
-        except Exception:
-            return None
-
-    def _refresh_table(self) -> None:
+    def _repopulate_schedules(self) -> None:
         table = self.query_one("#schedules-table", DataTable)
         predicate, terms = parse_filter(self.query_one("#filter-input", Input).value)
 
@@ -343,75 +201,119 @@ class SchedulesApp(App):
 
         table.clear()
         count = 0
-        _region_rank = {loc.replace("europe-", ""): len(LOCATIONS) - i - 1 for i, loc in enumerate(LOCATIONS)}
-        sorted_schedules = sorted(
-            self._all_schedules,
+        region_rank = {loc: len(LOCATIONS) - i - 1 for i, loc in enumerate(LOCATIONS)}
+        for sched in sorted(
+            self._schedules,
             key=lambda s: (
                 1 if s.get("_synthetic") else 0,
-                _region_rank.get(_fmt_region(s["name"]), -1),
+                region_rank.get(s["name"].split("/")[3], -1),
                 s.get("nextRunTime") or datetime.min.replace(tzinfo=timezone.utc),
             ),
             reverse=True,
-        )
-        for sched in sorted_schedules:
+        ):
             state = sched.get("state", "")
+            name = sched["name"]
+            display = sched.get("display_name", "")
+
             if self.active_only and state != "ACTIVE":
                 continue
-            name = sched["name"]
             if self._region and name.split("/")[3] != self._region:
                 continue
-            display = sched.get("display_name")
             if predicate is not None and not predicate(display):
                 continue
 
-            if sched.get("_synthetic"):
-                name_cell = Text(display, style="italic dim")
-            elif terms:
-                name_cell = _highlight(display, terms)
-            else:
-                name_cell = display
-            state_cell = Text(state, style="green" if state == "ACTIVE" else "dim")
-
-            recent_runs = self._runs_by_schedule.get(name, [])
+            name_cell = (
+                Text(display, style="italic dim")
+                if sched.get("_synthetic")
+                else _highlight(display, terms)
+                if terms
+                else display
+            )
             table.add_row(
                 _fmt_region(name),
-                state_cell,
+                Text(state, style="green" if state == "ACTIVE" else "dim"),
                 sched.get("cron", "-") or "-",
                 _fmt_time(sched.get("nextRunTime")),
-                _run_dots(recent_runs),
+                _run_dots(self._runs_by_schedule.get(name, [])),
                 name_cell,
                 key=name,
             )
             count += 1
 
         if saved_key:
-            self._suppress_row_highlight = True
+            self._suppress_highlight = True
             for idx, row_key in enumerate(table.rows):
                 if row_key.value == saved_key:
                     table.move_cursor(row=idx)
                     break
-            self._suppress_row_highlight = False
+            self._suppress_highlight = False
 
-        self._update_bar(count)
+        self._update_status(count)
 
-    def _update_bar(self, count: int | None = None) -> None:
+    def _repopulate_runs(self) -> None:
+        selected = self._selected_schedule()
+        is_unscheduled = selected is not None and selected.endswith("/__unscheduled__")
+
+        table = self.query_one("#runs-table", DataTable)
+
+        if self._current_schedule:
+            try:
+                key = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
+                if key:
+                    self._run_cursors[self._current_schedule] = key
+            except Exception:
+                pass
+
+        table.clear(columns=True)
+        if is_unscheduled:
+            table.add_columns("Status", "Start", "Duration", "Name")
+        else:
+            table.add_columns("Status", "Start", "Duration")
+
+        runs_widget = self.query_one("#runs-table")
+        runs_widget.styles.width = "1fr" if is_unscheduled else 50
+
+        runs = self._runs_by_schedule.get(selected, []) if selected else []
+        cutoff_24h = pendulum.now("UTC").subtract(hours=24)
+        for run in runs:
+            state_name = run.state.name
+            state_cell = Text(state_name.replace("PIPELINE_STATE_", ""), style=RUN_STATE_STYLE.get(state_name, "dim"))
+            recent_fail = (
+                state_name == "PIPELINE_STATE_FAILED" and run.end_time and pendulum.instance(run.end_time) >= cutoff_24h
+            )
+            start_cell = Text(_fmt_time(run.start_time), style="red" if recent_fail else "")
+            duration = _fmt_duration(run.start_time, run.end_time)
+            if is_unscheduled:
+                table.add_row(state_cell, start_cell, duration, fmt_name(run.name), key=run.name)
+            else:
+                table.add_row(state_cell, start_cell, duration, key=run.name)
+
+        if selected and selected in self._run_cursors:
+            saved = self._run_cursors[selected]
+            for idx, row_key in enumerate(table.rows):
+                if row_key.value == saved:
+                    table.move_cursor(row=idx)
+                    break
+
+        self._current_schedule = selected
+
+    def _selected_schedule(self) -> str | None:
+        try:
+            st = self.query_one("#schedules-table", DataTable)
+            return st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
+        except Exception:
+            return None
+
+    def _update_status(self, count: int | None = None) -> None:
         if self._loading_schedules:
             left = "Fetching schedules..."
         elif self._loading_runs:
             left = "Fetching runs..."
         else:
-            total = len(self._all_schedules)
+            total = len(self._schedules)
             left = f"{count}/{total} schedules" if self.active_only and count is not None else f"{total} schedules"
 
         right_parts = []
-        if self._ua_failed_runs:
-            cutoff = pendulum.now("UTC").subtract(hours=24)
-            n = sum(1 for r in self._ua_failed_runs if r.end_time and pendulum.instance(r.end_time) >= cutoff)
-            if n:
-                style = "bold orange" if self._ua_view else "orange"
-                right_parts.append(
-                    f'[@click="app.toggle_ua_view"][{style} not underline]⚠ {n} New Failed UA Runs[/][/]'
-                )
         if self._region:
             right_parts.append(self._region.split("-", 1)[-1])
         if self._last_refresh:
