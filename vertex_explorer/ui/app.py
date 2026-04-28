@@ -147,7 +147,10 @@ class SchedulesApp(App):
 
     def action_escape(self) -> None:
         if isinstance(self.screen, ModalScreen):
-            self.pop_screen()
+            if isinstance(self.focused, Input):
+                self.screen.set_focus(None)
+            else:
+                self.pop_screen()
             return
         fi = self.query_one("#filter-input", Input)
         if fi.has_focus:
