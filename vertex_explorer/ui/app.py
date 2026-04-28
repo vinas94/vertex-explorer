@@ -32,7 +32,7 @@ class SchedulesApp(App):
         Binding("R", "refresh", "Refresh", priority=True),
         Binding("f", "focus_filter", "Filter"),
         Binding("r", "toggle_region", "Region"),
-        Binding("a", "toggle_active_only", "Active"),
+        Binding("a", "toggle_active", "Active"),
         Binding("o", "open", "Open"),
         Binding("q", "quit", "Quit"),
         Binding("escape", "escape", "Escape", show=False, priority=True),
@@ -41,7 +41,8 @@ class SchedulesApp(App):
     ]
     CSS_PATH = "app.tcss"
 
-    active_only: reactive[bool] = reactive(False)
+    active: reactive[bool] = reactive(False)
+    region: reactive[str | None] = reactive(None)
 
     def __init__(self) -> None:
         super().__init__()
@@ -50,7 +51,6 @@ class SchedulesApp(App):
         self._last_refresh: datetime | None = None
         self._loading_schedules = False
         self._loading_runs = False
-        self._region: str | None = None
         self._suppress_highlight = False
         self._run_cursors: dict[str, str] = {}
         self._current_schedule: str | None = None
@@ -106,12 +106,12 @@ class SchedulesApp(App):
 
     def action_toggle_region(self) -> None:
         cycle = dict(zip([None, *LOCATIONS], [*LOCATIONS, None]))
-        self._region = cycle[self._region]
+        self.region = cycle[self.region]
         self._repopulate_schedules()
         self._update_binding_highlights()
 
-    def action_toggle_active_only(self) -> None:
-        self.active_only = not self.active_only
+    def action_toggle_active(self) -> None:
+        self.active = not self.active
         self._repopulate_schedules()
         self._update_binding_highlights()
 
@@ -209,7 +209,6 @@ class SchedulesApp(App):
         self._loading_runs = False
         self._repopulate_schedules()
         self._repopulate_runs()
-        self._update_status()
 
     def _on_error(self, msg: str) -> None:
         self._loading_schedules = False
@@ -219,8 +218,8 @@ class SchedulesApp(App):
 
     def _update_binding_highlights(self) -> None:
         toggled = {
-            "toggle_region": self._region is not None,
-            "toggle_active_only": self.active_only,
+            "toggle_region": self.region is not None,
+            "toggle_active": self.active,
         }
         for key in self.query(FooterKey):
             key.set_class(toggled.get(key.action, False), "-toggled")
@@ -252,9 +251,9 @@ class SchedulesApp(App):
             name = sched["name"]
             display = sched.get("display_name", "")
 
-            if self.active_only and state != "ACTIVE" and not sched.get("_synthetic"):
+            if self.active and state != "ACTIVE" and not sched.get("_synthetic"):
                 continue
-            if self._region and name.split("/")[3] != self._region:
+            if self.region and name.split("/")[3] != self.region:
                 continue
             if predicate is not None and not predicate(display):
                 continue
@@ -275,7 +274,8 @@ class SchedulesApp(App):
                 name_cell,
                 key=name,
             )
-            count += 1
+            if not sched.get("_synthetic"):
+                count += 1
 
         if saved_key:
             self._suppress_highlight = True
@@ -346,13 +346,13 @@ class SchedulesApp(App):
             return None
 
     def _update_status(self, count: int | None = None) -> None:
-        if self._loading_schedules:
-            left = "Fetching schedules..."
-        elif self._loading_runs:
-            left = "Fetching runs..."
+        if self._loading_schedules or self._loading_runs:
+            phase = "schedules" if self._loading_schedules else "runs"
+            left = f"Fetching {phase}..."
         else:
-            total = len(self._schedules)
-            left = f"{count}/{total} schedules" if self.active_only and count is not None else f"{total} schedules"
+            total = sum(1 for s in self._schedules if not s.get("_synthetic"))
+            filtered = (self.active or self.region is not None) and count is not None
+            left = f"{count}/{total} schedules" if filtered else f"{total} schedules"
 
         right_parts = []
         if self._last_refresh:
