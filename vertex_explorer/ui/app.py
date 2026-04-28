@@ -1,5 +1,4 @@
 import os
-import subprocess
 import webbrowser
 from datetime import datetime, timezone
 
@@ -130,18 +129,19 @@ class SchedulesApp(App):
         self.query_one("#filter-input", Input).focus()
 
     def action_quit(self) -> None:
-        with open("/dev/tty", "w") as tty:
-            tty.write(
-                "\033[?1000l"  # disable mouse click tracking
-                "\033[?1002l"  # disable mouse button-event tracking
-                "\033[?1003l"  # disable mouse all-motion tracking
-                "\033[?1006l"  # disable SGR extended mouse mode
-                "\033[?1049l"  # exit alternate screen
-                "\033[?25h"  # show cursor
-                "\033[0m"  # reset colors
-            )
-        subprocess.run(["stty", "sane"], stderr=subprocess.DEVNULL)
-        os._exit(0)
+        self.workers.cancel_all()
+        _stop = self._driver.stop_application_mode
+
+        def _stop_and_exit():
+            _stop()
+            devnull = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(devnull, 1)
+            os.dup2(devnull, 2)
+            os.close(devnull)
+            os._exit(0)
+
+        self._driver.stop_application_mode = _stop_and_exit
+        self.exit()
 
     def action_escape(self) -> None:
         if isinstance(self.screen, ModalScreen):
