@@ -10,10 +10,11 @@ from textual.containers import Horizontal
 from textual.reactive import reactive
 from textual.widgets import DataTable, Footer, Input, Label
 
+from vertex_explorer.client import fetch_all
 from vertex_explorer.config import RUN_STATE_STYLE
-from vertex_explorer.data.client import fetch_all
-from vertex_explorer.utils.filter_parser import highlight, parse_filter
-from vertex_explorer.utils.helpers import (
+from vertex_explorer.filters import parse_filter
+from vertex_explorer.processor import build_runs_index, build_schedules, build_ua_failed_runs
+from vertex_explorer.ui.formatters import (
     _fmt_duration,
     _fmt_name,
     _fmt_region,
@@ -21,8 +22,8 @@ from vertex_explorer.utils.helpers import (
     _run_dots,
     _run_url,
     _schedule_url,
+    highlight,
 )
-from vertex_explorer.data.schedule_data import build_schedules, build_runs_index, build_ua_failed_runs
 
 
 class SchedulesApp(App):

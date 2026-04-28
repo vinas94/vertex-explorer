@@ -1,6 +1,3 @@
-from rich.text import Text
-
-
 class _Tok:
     WORD, AND, OR, LP, RP, EOF = "WORD", "AND", "OR", "LP", "RP", "EOF"
 
@@ -99,14 +96,3 @@ def parse_filter(text: str) -> tuple:
         return _Parser(_lex(text)).parse()
     except Exception:
         return None, []
-
-
-def highlight(text: str, terms: list[str]) -> Text:
-    rt = Text(text)
-    tl = text.lower()
-    for term in terms:
-        start = 0
-        while (idx := tl.find(term, start)) != -1:
-            rt.stylize("bold yellow", idx, idx + len(term))
-            start = idx + len(term)
-    return rt

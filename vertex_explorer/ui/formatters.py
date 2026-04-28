@@ -57,3 +57,14 @@ def _fmt_duration(start, end) -> str:
         return f"{s}s"
     except Exception:
         return "-"
+
+
+def highlight(text: str, terms: list[str]) -> Text:
+    rt = Text(text)
+    tl = text.lower()
+    for term in terms:
+        start = 0
+        while (idx := tl.find(term, start)) != -1:
+            rt.stylize("bold yellow", idx, idx + len(term))
+            start = idx + len(term)
+    return rt
