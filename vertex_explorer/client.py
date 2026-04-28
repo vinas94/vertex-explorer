@@ -2,22 +2,13 @@ import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
-import colorlog
 import pendulum
 from google.cloud import aiplatform_v1
 from google.protobuf import field_mask_pb2
 
-from vertex_explorer.config import PROJECT
+from vertex_explorer.config import PROJECT, RUNS_DAYS, SCHEDULES_DAYS
 
-colorlog.basicConfig(
-    level=logging.INFO,
-    format="%(log_color)s%(asctime)s %(name)s %(levelname)s%(reset)s %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
 log = logging.getLogger(__name__)
-
-RUNS_DAYS = 28
-SCHEDULES_DAYS = 7
 
 RUN_READ_MASK = field_mask_pb2.FieldMask(paths=["name", "start_time", "end_time", "state", "schedule_name"])
 
@@ -97,36 +88,3 @@ def fetch_all(on_schedules=None, on_runs=None) -> dict:
         f_runs_w4.add_done_callback(lambda f: _on_runs_done("europe-west4", f))
 
     return {"runs": runs, "schedules": schedules}
-
-
-if __name__ == "__main__":
-    result = fetch_all()
-
-
-# LOOKBACK_DAYS = 7
-# PREFIXES = [
-#     "go-model-treebased-install-prediction",
-#     "tensorflow-install-prediction",
-#     "tensorflow-action-prediction",
-#     "tensorflow-audience-similarity",
-#     "tensorflow-win-price-prediction",
-# ]
-#
-#
-# ua_failed_runs = []
-# for region, runs in result["runs"].items():
-#     for run in runs:
-#         run_name = run.name.split("/")[-1]
-#
-#         if run.end_time and run.end_time < pendulum.now("UTC").add(days=-LOOKBACK_DAYS):
-#             continue
-#
-#         if run.state.name != "PIPELINE_STATE_FAILED":
-#             continue
-#
-#         if not any(run_name.startswith(p) for p in PREFIXES):
-#             continue
-#
-#         ua_failed_runs.append(run)
-#
-# print(len(ua_failed_runs))
