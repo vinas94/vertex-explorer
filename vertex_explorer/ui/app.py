@@ -108,10 +108,12 @@ class SchedulesApp(App):
         cycle = dict(zip([None, *LOCATIONS], [*LOCATIONS, None]))
         self._region = cycle[self._region]
         self._repopulate_schedules()
+        self._update_binding_highlights()
 
     def action_toggle_active_only(self) -> None:
         self.active_only = not self.active_only
         self._repopulate_schedules()
+        self._update_binding_highlights()
 
     def action_focus_filter(self) -> None:
         self.query_one("#filter-input", Input).focus()
@@ -214,6 +216,14 @@ class SchedulesApp(App):
         self._loading_runs = False
         self.query_one("#status-left", Label).update(f"[red]Error:[/] {msg[:60]}")
         self.query_one("#status-right", Label).update("")
+
+    def _update_binding_highlights(self) -> None:
+        toggled = {
+            "toggle_region": self._region is not None,
+            "toggle_active_only": self.active_only,
+        }
+        for key in self.query(FooterKey):
+            key.set_class(toggled.get(key.action, False), "-toggled")
 
     # ── rendering ─────────────────────────────────────────────────────────────
 
