@@ -11,6 +11,7 @@ from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.reactive import reactive
 from textual.widgets import DataTable, Footer, Input, Label
+from textual.widgets._footer import FooterKey
 
 from vertex_explorer.client import fetch_all
 from vertex_explorer.config import LOCATIONS, RUN_STATE_STYLE
@@ -29,8 +30,8 @@ from vertex_explorer.ui.formatters import (
 class SchedulesApp(App):
     BINDINGS = [
         Binding("R", "refresh", "Refresh", priority=True),
-        Binding("r", "toggle_region", "Region"),
         Binding("f", "focus_filter", "Filter"),
+        Binding("r", "toggle_region", "Region"),
         Binding("a", "toggle_active_only", "Active"),
         Binding("o", "open", "Open"),
         Binding("q", "quit", "Quit"),
@@ -241,7 +242,7 @@ class SchedulesApp(App):
             name = sched["name"]
             display = sched.get("display_name", "")
 
-            if self.active_only and state != "ACTIVE":
+            if self.active_only and state != "ACTIVE" and not sched.get("_synthetic"):
                 continue
             if self._region and name.split("/")[3] != self._region:
                 continue
@@ -344,8 +345,6 @@ class SchedulesApp(App):
             left = f"{count}/{total} schedules" if self.active_only and count is not None else f"{total} schedules"
 
         right_parts = []
-        if self._region:
-            right_parts.append(self._region.split("-", 1)[-1])
         if self._last_refresh:
             right_parts.append(self._last_refresh.strftime("%H:%M:%S"))
 
