@@ -8,26 +8,30 @@ import vertex_explorer.config as config
 
 class SettingsScreen(ModalScreen[bool]):
     def compose(self) -> ComposeResult:
+        left = [
+            ("Runs Days", str(config.RUNS_DAYS), "s-runs-days"),
+            ("Schedules Days", str(config.SCHEDULES_DAYS), "s-schedules-days"),
+            ("Runs Page Size", str(config.RUNS_PAGE_SIZE), "s-runs-page-size"),
+        ]
+        right = [
+            ("Project", config.PROJECT, "s-project"),
+            ("Locations", ", ".join(config.LOCATIONS), "s-locations"),
+            ("UA Prefixes", ", ".join(config.UA_PREFIXES), "s-ua-prefixes"),
+        ]
+
         with Vertical(id="settings-dialog"):
             yield Label("Settings", id="settings-title")
-            with Horizontal():
-                yield Label("Project")
-                yield Input(config.PROJECT, id="s-project")
-            with Horizontal():
-                yield Label("Locations")
-                yield Input(", ".join(config.LOCATIONS), id="s-locations")
-            with Horizontal():
-                yield Label("Runs Days")
-                yield Input(str(config.RUNS_DAYS), id="s-runs-days")
-            with Horizontal():
-                yield Label("Schedules Days")
-                yield Input(str(config.SCHEDULES_DAYS), id="s-schedules-days")
-            with Horizontal():
-                yield Label("Runs Page Size")
-                yield Input(str(config.RUNS_PAGE_SIZE), id="s-runs-page-size")
-            with Horizontal():
-                yield Label("UA Prefixes")
-                yield Input(", ".join(config.UA_PREFIXES), id="s-ua-prefixes")
+            with Horizontal(id="settings-columns"):
+                with Vertical(classes="settings-col"):
+                    for lbl, val, id_ in left:
+                        with Horizontal(classes="setting-row"):
+                            yield Label(lbl, classes="setting-label")
+                            yield Input(val, id=id_)
+                with Vertical(classes="settings-col"):
+                    for lbl, val, id_ in right:
+                        with Horizontal(classes="setting-row"):
+                            yield Label(lbl, classes="setting-label")
+                            yield Input(val, id=id_)
 
     def on_input_submitted(self, _: Input.Submitted) -> None:
         self.dismiss(self._save())
