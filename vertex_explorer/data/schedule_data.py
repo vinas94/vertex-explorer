@@ -2,8 +2,8 @@ from datetime import datetime, timezone
 
 import pendulum
 
-from .config import PROJECT, UA_LOOKBACK_DAYS, UA_PREFIXES
-from .helpers import _fmt_name, _fmt_region
+from vertex_explorer.config import PROJECT, UA_LOOKBACK_DAYS, UA_PREFIXES
+from vertex_explorer.utils.helpers import _fmt_name, _fmt_region
 
 
 def synthetic_schedule(loc: str) -> dict:

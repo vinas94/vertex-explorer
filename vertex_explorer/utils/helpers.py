@@ -3,7 +3,7 @@ import re
 import pendulum
 from rich.text import Text
 
-from .config import RUN_STATE_STYLE
+from vertex_explorer.config import RUN_STATE_STYLE
 
 
 def _run_url(resource_name: str) -> str:
