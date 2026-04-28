@@ -11,7 +11,7 @@ from textual.reactive import reactive
 from textual.widgets import DataTable, Footer, Input, Label
 
 from vertex_explorer.client import fetch_all
-from vertex_explorer.config import RUN_STATE_STYLE
+from vertex_explorer.config import LOCATIONS, RUN_STATE_STYLE
 from vertex_explorer.filters import parse_filter
 from vertex_explorer.processor import build_runs_index, build_schedules, build_ua_failed_runs, fmt_name
 from vertex_explorer.ui.formatters import (
@@ -132,7 +132,7 @@ class SchedulesApp(App):
         self._update_bar()
 
     def action_toggle_region(self) -> None:
-        cycle = {None: "west3", "west3": "west4", "west4": None}
+        cycle = dict(zip([None, *LOCATIONS], [*LOCATIONS, None]))
         self._region = cycle[self._region]
         self._refresh_table()
 
@@ -343,7 +343,7 @@ class SchedulesApp(App):
 
         table.clear()
         count = 0
-        _region_rank = {"west3": 1, "west4": 0}
+        _region_rank = {loc.replace("europe-", ""): len(LOCATIONS) - i - 1 for i, loc in enumerate(LOCATIONS)}
         sorted_schedules = sorted(
             self._all_schedules,
             key=lambda s: (
@@ -358,7 +358,7 @@ class SchedulesApp(App):
             if self.active_only and state != "ACTIVE":
                 continue
             name = sched["name"]
-            if self._region and _fmt_region(name) != self._region:
+            if self._region and name.split("/")[3] != self._region:
                 continue
             display = sched.get("display_name")
             if predicate is not None and not predicate(display):
@@ -413,7 +413,7 @@ class SchedulesApp(App):
                     f'[@click="app.toggle_ua_view"][{style} not underline]⚠ {n} New Failed UA Runs[/][/]'
                 )
         if self._region:
-            right_parts.append(self._region)
+            right_parts.append(self._region.split("-", 1)[-1])
         if self._last_refresh:
             right_parts.append(self._last_refresh.strftime("%H:%M:%S"))
 
