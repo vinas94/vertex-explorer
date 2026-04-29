@@ -29,6 +29,12 @@ from vertex_explorer.ui.formatters import (
 from vertex_explorer.ui.settings import SettingsScreen
 
 
+class _Footer(Footer):
+    async def recompose(self) -> None:
+        await super().recompose()
+        self.app._update_binding_highlights()
+
+
 class SchedulesApp(App):
     BINDINGS = [
         Binding("R", "refresh", "Refresh"),
@@ -74,7 +80,7 @@ class SchedulesApp(App):
             DataTable(id="runs-table", cursor_foreground_priority="renderable"),
             id="content",
         )
-        yield Footer()
+        yield _Footer()
 
     def on_mount(self) -> None:
         st = self.query_one("#schedules-table", DataTable)
