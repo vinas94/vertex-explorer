@@ -56,6 +56,7 @@ class SchedulesApp(App):
         self._run_cursors: dict[str, str] = {}
         self._run_offsets: dict[str, int] = {}
         self._current_schedule: str | None = None
+        self._total_schedules: int = 0
 
     # ── layout ────────────────────────────────────────────────────────────────
 
@@ -223,6 +224,7 @@ class SchedulesApp(App):
 
     def _on_schedules_ready(self, schedules_by_loc: dict) -> None:
         self._schedules = build_schedules(schedules_by_loc)
+        self._total_schedules = sum(1 for s in self._schedules if not s.get("_synthetic"))
         self._last_refresh = datetime.now()
         self._loading_schedules = False
         self._repopulate_schedules()
@@ -393,9 +395,11 @@ class SchedulesApp(App):
             phase = "schedules" if self._loading_schedules else "runs"
             left = f"Fetching {phase}..."
         else:
-            total = sum(1 for s in self._schedules if not s.get("_synthetic"))
-            filtered = (self.active or self.region is not None) and count is not None
-            left = f"{count}/{total} schedules" if filtered else f"{total} schedules"
+            left = (
+                f"{count}/{self._total_schedules} schedules"
+                if count is not None and count != self._total_schedules
+                else f"{self._total_schedules} schedules"
+            )
 
         right_parts = []
         if self._last_refresh:
