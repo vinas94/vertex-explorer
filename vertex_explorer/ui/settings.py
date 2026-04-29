@@ -43,11 +43,12 @@ class _NavInput(Input):
 
     def _select_word(self) -> None:
         v, pos = self.value, self.cursor_position
+        is_word = lambda c: c.isalnum() or c == "-"
         start = pos
-        while start > 0 and v[start - 1] not in " ,\t":
+        while start > 0 and is_word(v[start - 1]):
             start -= 1
         end = pos
-        while end < len(v) and v[end] not in " ,\t":
+        while end < len(v) and is_word(v[end]):
             end += 1
         if start < end:
             self.selection = Selection(start, end)
@@ -106,6 +107,10 @@ class SettingsScreen(ModalScreen[bool]):
         else:
             return
         event.stop()
+
+    def on_click(self, event) -> None:
+        if event.widget is self:
+            self.dismiss(False)
 
     def on_input_submitted(self, _: Input.Submitted) -> None:
         self.set_focus(None)
