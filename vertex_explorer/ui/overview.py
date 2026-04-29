@@ -152,6 +152,26 @@ class Overview(App):
         self._repopulate_schedules()
         self._update_binding_highlights()
 
+    def action_next_tab(self) -> None:
+        if isinstance(self.screen, ModalScreen):
+            if hasattr(self.screen, "tab_next"):
+                self.screen.tab_next()
+            return
+        tabs = ["overview", "tracker"]
+        self.tab = tabs[(tabs.index(self.tab) + 1) % len(tabs)]
+
+    def watch_tab(self) -> None:
+        try:
+            on_overview = self.tab == "overview"
+            self.query_one("#overview-pane").display = on_overview
+            self.query_one("#tracker-pane").display = not on_overview
+            self.query_one("#tab-overview").set_class(on_overview, "-active")
+            self.query_one("#tab-tracker").set_class(not on_overview, "-active")
+            if on_overview:
+                self.query_one("#schedules-table", DataTable).focus()
+        except Exception:
+            pass
+
     def action_open(self) -> None:
         self._flash_key("open")
         st = self.query_one("#schedules-table", DataTable)

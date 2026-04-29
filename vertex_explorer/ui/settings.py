@@ -14,6 +14,7 @@ _GRID = [
 ]
 
 _GRID_POS = {id_: (r, c) for r, pair in enumerate(_GRID) for c, (_, id_) in enumerate(pair)}
+_GRID_ORDER = [(r, c) for r in range(len(_GRID)) for c in range(2)]
 
 
 def _current_value(id_: str) -> str:
@@ -118,6 +119,11 @@ class SettingsScreen(ModalScreen[bool]):
     def on_click(self, event) -> None:
         if event.widget is self:
             self.dismiss(False)
+
+    def tab_next(self) -> None:
+        if self.focused is not None:
+            self.set_focus(None)
+        self.cursor = _GRID_ORDER[(_GRID_ORDER.index(self.cursor) + 1) % len(_GRID_ORDER)]
 
     def on_input_submitted(self, _: Input.Submitted) -> None:
         self.set_focus(None)
