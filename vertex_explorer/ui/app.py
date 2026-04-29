@@ -32,7 +32,7 @@ class VertexExplorer(App):
         Binding("escape", "escape", show=False, priority=True),
         Binding("tab", "next_tab", show=False, priority=True),
     ]
-    CSS_PATH = "style.tcss"
+    CSS_PATH = "styles.tcss"
 
     TABS = ["overview", "tracker"]
     tab: reactive[str] = reactive("overview")
