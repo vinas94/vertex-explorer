@@ -313,45 +313,41 @@ class SchedulesApp(App):
         self._update_status(count)
 
     def _repopulate_runs(self) -> None:
-        selected = self._selected_schedule()
-        table = self.query_one("#runs-table", DataTable)
+        selected_schedule = self._selected_schedule()
+        runs_table = self.query_one("#runs-table", DataTable)
 
-        if self._current_schedule:
-            try:
-                key = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
-                if key:
-                    self._run_cursors[self._current_schedule] = key
-            except Exception:
-                pass
+        # Save cursor position for the schedule we're leaving
+        try:
+            key = runs_table.coordinate_to_cell_key(runs_table.cursor_coordinate).row_key.value
+            if key:
+                self._run_cursors[self._current_schedule] = key
+        except Exception:
+            pass
 
-        self._current_schedule = selected
+        self._current_schedule = selected_schedule
 
-        if selected is None:
-            table.clear()
-            return
+        # Rebuild columns and rows for the selected schedule
+        runs_table.clear(columns=True)
+        runs_table.add_columns("Status", "Start", "Duration")
+        if is_unscheduled := selected_schedule.endswith("__unscheduled__"):
+            runs_table.add_columns("Name")
 
-        is_unscheduled = selected.endswith("__unscheduled__")
-        all_runs = self._runs_by_schedule.get(selected, [])
-        self._run_offsets[selected] = RUNS_PAGE_SIZE
+        all_runs = self._runs_by_schedule.get(selected_schedule, [])
+        self._append_run_rows(runs_table, all_runs[:RUNS_PAGE_SIZE], is_unscheduled)
+        self._run_offsets[selected_schedule] = RUNS_PAGE_SIZE
 
-        table.clear(columns=True)
-        table.add_columns("Status", "Start", "Duration")
-        if is_unscheduled:
-            table.add_columns("Name")
-        self._append_run_rows(table, all_runs[:RUNS_PAGE_SIZE], is_unscheduled)
-
-        if selected in self._run_cursors:
-            saved = self._run_cursors[selected]
-            for idx, row_key in enumerate(table.rows):
+        # Restore cursor position for the schedule we're entering
+        if selected_schedule in self._run_cursors:
+            saved = self._run_cursors[selected_schedule]
+            for idx, row_key in enumerate(runs_table.rows):
                 if row_key.value == saved:
-                    table.move_cursor(row=idx)
+                    runs_table.move_cursor(row=idx)
                     break
-
-        table.set_class(not is_unscheduled, "-scheduled")
 
         # set_class triggers refresh() before layout recalculates, caching rows at the
         # wrong width. Defer cache invalidation so the next frame renders at correct size.
-        self.call_after_refresh(table._clear_caches)
+        runs_table.set_class(not is_unscheduled, "-scheduled")
+        self.call_after_refresh(runs_table._clear_caches)
 
     def _load_more_runs(self) -> None:
         selected = self._current_schedule
@@ -394,18 +390,12 @@ class SchedulesApp(App):
 
     def _update_status(self, count: int | None = None) -> None:
         if self._loading_schedules or self._loading_runs:
-            phase = "schedules" if self._loading_schedules else "runs"
-            left = f"Fetching {phase}..."
+            left = f"Fetching {'schedules' if self._loading_schedules else 'runs'}..."
+        elif count is not None and count != self._total_schedules:
+            left = f"{count}/{self._total_schedules} schedules"
         else:
-            left = (
-                f"{count}/{self._total_schedules} schedules"
-                if count is not None and count != self._total_schedules
-                else f"{self._total_schedules} schedules"
-            )
+            left = f"{self._total_schedules} schedules"
 
-        right_parts = []
-        if self._last_refresh:
-            right_parts.append(self._last_refresh.strftime("%H:%M:%S"))
-
+        right = self._last_refresh.strftime("%H:%M:%S") if self._last_refresh else ""
         self.query_one("#status-left", Label).update(left)
-        self.query_one("#status-right", Label).update("  ".join(right_parts))
+        self.query_one("#status-right", Label).update(right)
