@@ -12,13 +12,14 @@ from vertex_explorer.ui.app import SchedulesApp
 
 
 def main():
-    logging.root.handlers.clear()
-    print("Authenticating...")
+
     try:
         google.auth.default()
     except google.auth.exceptions.DefaultCredentialsError:
-        print("Error: no Google credentials found. Run: gcloud auth application-default login")
+        logging.error("no Google credentials found. Run: gcloud auth application-default login")
         sys.exit(1)
+
+    logging.root.handlers.clear()
     SchedulesApp().run()
 
 

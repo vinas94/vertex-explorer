@@ -7,12 +7,13 @@ from textual.widgets._input import Selection
 
 import vertex_explorer.config as config
 
-
 _GRID = [
     [("Runs Days", "s-runs-days"), ("Project", "s-project")],
     [("Schedules Days", "s-schedules-days"), ("Locations", "s-locations")],
     [("Runs Page Size", "s-runs-page-size"), ("UA Prefixes", "s-ua-prefixes")],
 ]
+
+_GRID_POS = {id_: (r, c) for r, pair in enumerate(_GRID) for c, (_, id_) in enumerate(pair)}
 
 
 def _current_value(id_: str) -> str:
@@ -29,18 +30,10 @@ def _current_value(id_: str) -> str:
 class _NavInput(Input):
     can_focus = False
 
-    async def _on_mouse_down(self, event) -> None:
-        self.can_focus = True
-        await super()._on_mouse_down(event)
-        self.focus()
-        self.screen.cursor = next(  # type: ignore
-            (r, c)
-            for r, pair in enumerate(_GRID)
-            for c, (_, id_) in enumerate(pair)
-            if id_ == self.id
-        )
-
     async def _on_click(self, event) -> None:
+        self.can_focus = True
+        self.focus()
+        self.screen.cursor = _GRID_POS[self.id]  # type: ignore
         if event.chain == 2:
             self._select_word()
             event.prevent_default()
