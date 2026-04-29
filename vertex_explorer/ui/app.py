@@ -350,9 +350,8 @@ class SchedulesApp(App):
         table.set_class(not is_unscheduled, "-scheduled")
 
         # set_class triggers refresh() before layout recalculates, caching rows at the
-        # wrong width. Double-defer so both the set_class layout pass and any concurrent
-        # schedules-table layout pass settle before we repaint at the correct size.
-        self.call_after_refresh(lambda: (table._clear_caches(), table.refresh()))
+        # wrong width. Defer cache invalidation so the next frame renders at correct size.
+        self.call_after_refresh(table._clear_caches)
 
     def _load_more_runs(self) -> None:
         selected = self._current_schedule
