@@ -107,6 +107,7 @@ class SchedulesApp(App):
         rt = self.query_one("#runs-table", DataTable)
         rt.clear(columns=True)
         rt.add_columns("Status", "Start", "Duration", "Name")
+        rt.remove_class("-scheduled")
 
         self._update_status()
         self._load_data()
@@ -313,8 +314,6 @@ class SchedulesApp(App):
 
     def _repopulate_runs(self) -> None:
         selected = self._selected_schedule()
-        is_unscheduled = selected is not None and selected.endswith("/__unscheduled__")
-
         table = self.query_one("#runs-table", DataTable)
 
         if self._current_schedule:
@@ -325,31 +324,35 @@ class SchedulesApp(App):
             except Exception:
                 pass
 
-        all_runs = self._runs_by_schedule.get(selected, []) if selected else []
-        self._run_offsets[selected] = RUNS_PAGE_SIZE if selected else 0
+        self._current_schedule = selected
+
+        if selected is None:
+            table.clear()
+            return
+
+        is_unscheduled = selected.endswith("__unscheduled__")
+        all_runs = self._runs_by_schedule.get(selected, [])
+        self._run_offsets[selected] = RUNS_PAGE_SIZE
 
         table.clear(columns=True)
         table.add_columns("Status", "Start", "Duration")
         if is_unscheduled:
             table.add_columns("Name")
-
         self._append_run_rows(table, all_runs[:RUNS_PAGE_SIZE], is_unscheduled)
-        if all_runs:
-            self.query_one("#runs-table").set_class(not is_unscheduled, "-scheduled")
-            if table._require_update_dimensions:
-                table._require_update_dimensions = False
-                new_rows = table._new_rows.copy()
-                table._new_rows.clear()
-                table._update_dimensions(new_rows)
 
-        if selected and selected in self._run_cursors:
+        if selected in self._run_cursors:
             saved = self._run_cursors[selected]
             for idx, row_key in enumerate(table.rows):
                 if row_key.value == saved:
                     table.move_cursor(row=idx)
                     break
 
-        self._current_schedule = selected
+        table.set_class(not is_unscheduled, "-scheduled")
+
+        # set_class triggers refresh() before layout recalculates, caching rows at the
+        # wrong width. Double-defer so both the set_class layout pass and any concurrent
+        # schedules-table layout pass settle before we repaint at the correct size.
+        self.call_after_refresh(lambda: self.call_after_refresh(lambda: (table._clear_caches(), table.refresh())))
 
     def _load_more_runs(self) -> None:
         selected = self._current_schedule
@@ -358,7 +361,7 @@ class SchedulesApp(App):
         batch = all_runs[offset : offset + RUNS_PAGE_SIZE]
         if not batch:
             return
-        is_unscheduled = selected.endswith("/__unscheduled__")
+        is_unscheduled = selected.endswith("__unscheduled__")
         table = self.query_one("#runs-table", DataTable)
         self._append_run_rows(table, batch, is_unscheduled)
         self._run_offsets[selected] = offset + len(batch)
