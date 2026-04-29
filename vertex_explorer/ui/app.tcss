@@ -9,6 +9,8 @@
 #runs-table.-scheduled { width: 23%; }
 FooterKey.-toggled .footer-key--key { background: $accent; color: $text; }
 FooterKey.-toggled .footer-key--description { color: $accent; }
+FooterKey.-pressed .footer-key--key { background: $accent; color: $text; }
+FooterKey.-pressed .footer-key--description { color: $accent; }
 Toast { width: auto; }
 
 SettingsScreen { align: center middle; }

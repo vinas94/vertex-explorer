@@ -102,6 +102,7 @@ class SchedulesApp(App):
     # ── actions ───────────────────────────────────────────────────────────────
 
     def action_refresh(self) -> None:
+        self._flash_key("refresh")
         if self._loading_schedules or self._loading_runs:
             return
 
@@ -134,6 +135,7 @@ class SchedulesApp(App):
         self._update_binding_highlights()
 
     def action_open(self) -> None:
+        self._flash_key("open")
         st = self.query_one("#schedules-table", DataTable)
         rt = self.query_one("#runs-table", DataTable)
         try:
@@ -149,6 +151,8 @@ class SchedulesApp(App):
             pass
 
     def action_settings(self) -> None:
+        self._flash_key("settings")
+
         def _on_dismiss(needs_refresh: bool) -> None:
             if needs_refresh:
                 self.action_refresh()
@@ -156,6 +160,7 @@ class SchedulesApp(App):
         self.push_screen(SettingsScreen(), _on_dismiss)
 
     def action_quit(self) -> None:
+        self._flash_key("quit")
         self.workers.cancel_all()
         _stop = self._driver.stop_application_mode
 
@@ -254,6 +259,7 @@ class SchedulesApp(App):
         toggled = {
             "toggle_region": self.region is not None,
             "toggle_active": self.active,
+            "focus_filter": bool(self.filter),
         }
         for key in self.query(FooterKey):
             key.set_class(toggled.get(key.action, False), "-toggled")
@@ -262,7 +268,7 @@ class SchedulesApp(App):
 
     def _repopulate_schedules(self) -> None:
         table = self.query_one("#schedules-table", DataTable)
-        predicate, terms = parse_filter(self.query_one("#filter-input", Input).value)
+        predicate, terms = parse_filter(self.filter)
 
         try:
             saved_key = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
