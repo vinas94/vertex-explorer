@@ -1,17 +1,13 @@
-import os
 import webbrowser
 from datetime import datetime, timezone
 
 import pendulum
 from rich.text import Text
 from textual import on, work
-from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
-from textual.screen import ModalScreen
-from textual.widgets import DataTable, Footer, Input, Label
-from textual.widgets._footer import FooterKey
+from textual.widgets import DataTable, Input
 
 from vertex_explorer.client import fetch_all
 from vertex_explorer.config import LOCATIONS, RUN_STATE_STYLE, RUNS_PAGE_SIZE
@@ -26,42 +22,23 @@ from vertex_explorer.ui.formatters import (
     _highlight,
     _run_dots,
 )
-from vertex_explorer.ui.settings import SettingsScreen
 
 
-class _Footer(Footer):
-    async def recompose(self) -> None:
-        pressed = {k.action for k in self.query(FooterKey) if "-pressed" in k.classes}
-        await super().recompose()
-        self.app._update_binding_highlights()
-        for key in self.query(FooterKey):
-            if key.action in pressed:
-                key.add_class("-pressed")
-
-
-class Overview(App):
+class OverviewTab(Vertical):
     BINDINGS = [
-        Binding("R", "refresh", "Refresh"),
         Binding("f", "focus_filter", "Filter"),
         Binding("r", "toggle_region", "Region"),
         Binding("a", "toggle_active", "Active"),
-        Binding("o", "open", "Open"),
-        Binding("s", "settings", "Settings"),
-        Binding("q", "quit", "Quit"),
-        Binding("escape", "escape", "Escape", show=False, priority=True),
-        Binding("tab", "next_tab", show=False, priority=True),
         Binding("right", "focus_right", show=False),
         Binding("left", "focus_left", show=False),
     ]
-    CSS_PATH = "style.tcss"
 
     active: reactive[bool] = reactive(False)
     region: reactive[str | None] = reactive(None)
     filter: reactive[str] = reactive("")
-    tab: reactive[str] = reactive("overview")
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
         self._schedules: list[dict] = []
         self._runs_by_schedule: dict[str, list] = {}
         self._last_refresh: datetime | None = None
@@ -74,27 +51,13 @@ class Overview(App):
 
     # ── layout ────────────────────────────────────────────────────────────────
 
-    def compose(self) -> ComposeResult:
+    def compose(self):
+        yield Input(placeholder="filter...", id="filter-input")
         yield Horizontal(
-            Label("", id="status-left"),
-            Horizontal(
-                Label("Overview", id="tab-overview", classes="tab"),
-                Label("Tracker", id="tab-tracker", classes="tab"),
-                id="tab-indicator",
-            ),
-            Label("VERTEX EXPLORER", id="status-center"),
-            Label("", id="status-right"),
-            id="titlebar",
+            DataTable(id="schedules-table", cursor_foreground_priority="renderable"),
+            DataTable(id="runs-table", cursor_foreground_priority="renderable"),
+            id="content",
         )
-        with Vertical(id="overview-pane"):
-            yield Input(placeholder="filter...", id="filter-input")
-            yield Horizontal(
-                DataTable(id="schedules-table", cursor_foreground_priority="renderable"),
-                DataTable(id="runs-table", cursor_foreground_priority="renderable"),
-                id="content",
-            )
-        yield Vertical(id="tracker-pane")
-        yield _Footer()
 
     def on_mount(self) -> None:
         st = self.query_one("#schedules-table", DataTable)
@@ -105,21 +68,21 @@ class Overview(App):
         st.add_column("Prev", width=7)
         st.add_column("Name")
         st.cursor_type = "row"
-        st.focus()
 
         rt = self.query_one("#runs-table", DataTable)
         rt.add_columns("Status", "Start", "Duration", "Name")
         rt.cursor_type = "row"
 
-        self.action_refresh()
+        self.reload()
+
+    def focus_default(self) -> None:
+        self.query_one("#schedules-table", DataTable).focus()
 
     # ── actions ───────────────────────────────────────────────────────────────
 
-    def action_refresh(self) -> None:
-        self._flash_key("refresh")
+    def reload(self) -> None:
         if self._loading_schedules or self._loading_runs:
             return
-
         self._loading_schedules = True
         self._loading_runs = True
         self._schedules = []
@@ -134,46 +97,7 @@ class Overview(App):
         self._update_status()
         self._load_data()
 
-    def action_focus_filter(self) -> None:
-        self.query_one("#filter-input", Input).focus()
-
-    def action_toggle_region(self) -> None:
-        cycle = dict(zip([None, *LOCATIONS], [*LOCATIONS, None]))
-        self.region = cycle[self.region]
-        self._repopulate_schedules()
-        self._update_binding_highlights()
-
-    def action_toggle_active(self) -> None:
-        self.active = not self.active
-        self._repopulate_schedules()
-        self._update_binding_highlights()
-
-    def watch_filter(self) -> None:
-        self._repopulate_schedules()
-        self._update_binding_highlights()
-
-    def action_next_tab(self) -> None:
-        if isinstance(self.screen, ModalScreen):
-            if hasattr(self.screen, "tab_next"):
-                self.screen.tab_next()
-            return
-        tabs = ["overview", "tracker"]
-        self.tab = tabs[(tabs.index(self.tab) + 1) % len(tabs)]
-
-    def watch_tab(self) -> None:
-        try:
-            on_overview = self.tab == "overview"
-            self.query_one("#overview-pane").display = on_overview
-            self.query_one("#tracker-pane").display = not on_overview
-            self.query_one("#tab-overview").set_class(on_overview, "-active")
-            self.query_one("#tab-tracker").set_class(not on_overview, "-active")
-            if on_overview:
-                self.query_one("#schedules-table", DataTable).focus()
-        except Exception:
-            pass
-
-    def action_open(self) -> None:
-        self._flash_key("open")
+    def open_current(self) -> None:
         st = self.query_one("#schedules-table", DataTable)
         rt = self.query_one("#runs-table", DataTable)
         try:
@@ -188,47 +112,28 @@ class Overview(App):
         except Exception:
             pass
 
-    def action_settings(self) -> None:
-        self._flash_key("settings", auto_clear=False)
-
-        def _on_dismiss(needs_refresh: bool) -> None:
-            for key in self.query(FooterKey):
-                if key.action == "settings":
-                    key.remove_class("-pressed")
-            if needs_refresh:
-                self.action_refresh()
-
-        self.push_screen(SettingsScreen(), _on_dismiss)
-
-    def action_quit(self) -> None:
-        self._flash_key("quit")
-        self.set_timer(0.005, self._do_quit)
-
-    def _do_quit(self) -> None:
-        self.workers.cancel_all()
-        _stop = self._driver.stop_application_mode
-
-        def _stop_and_exit():
-            _stop()
-            devnull = os.open(os.devnull, os.O_WRONLY)
-            os.dup2(devnull, 1)
-            os.dup2(devnull, 2)
-            os.close(devnull)
-            os._exit(0)
-
-        self._driver.stop_application_mode = _stop_and_exit
-        self.exit()
-
-    def action_escape(self) -> None:
-        if isinstance(self.screen, ModalScreen):
-            if isinstance(self.focused, Input):
-                self.screen.set_focus(None)
-            else:
-                self.screen.dismiss(False)
-            return
+    def escape(self) -> None:
         fi = self.query_one("#filter-input", Input)
         if fi.has_focus:
-            self.query_one("#schedules-table", DataTable).focus()
+            self.focus_default()
+
+    def action_focus_filter(self) -> None:
+        self.query_one("#filter-input", Input).focus()
+
+    def action_toggle_region(self) -> None:
+        cycle = dict(zip([None, *LOCATIONS], [*LOCATIONS, None]))
+        self.region = cycle[self.region]
+        self._repopulate_schedules()
+        self.app._update_binding_highlights()
+
+    def action_toggle_active(self) -> None:
+        self.active = not self.active
+        self._repopulate_schedules()
+        self.app._update_binding_highlights()
+
+    def watch_filter(self) -> None:
+        self._repopulate_schedules()
+        self.app._update_binding_highlights()
 
     def action_focus_right(self) -> None:
         st = self.query_one("#schedules-table", DataTable)
@@ -248,7 +153,7 @@ class Overview(App):
 
     @on(Input.Submitted, "#filter-input")
     def _on_filter_submitted(self, _: Input.Submitted) -> None:
-        self.query_one("#schedules-table", DataTable).focus()
+        self.focus_default()
 
     @on(DataTable.RowHighlighted, "#schedules-table")
     def _on_schedule_highlighted(self, event: DataTable.RowHighlighted) -> None:
@@ -296,24 +201,7 @@ class Overview(App):
     def _on_error(self, msg: str) -> None:
         self._loading_schedules = False
         self._loading_runs = False
-        self.query_one("#status-left", Label).update(f"[red]Error:[/] {msg[:60]}")
-        self.query_one("#status-right", Label).update("")
-
-    def _flash_key(self, action: str, *, auto_clear: bool = True) -> None:
-        for key in self.query(FooterKey):
-            if key.action == action:
-                key.add_class("-pressed")
-                if auto_clear:
-                    self.set_timer(0.15, lambda k=key: k.remove_class("-pressed"))
-
-    def _update_binding_highlights(self) -> None:
-        toggled = {
-            "toggle_region": self.region is not None,
-            "toggle_active": self.active,
-            "focus_filter": bool(self.filter),
-        }
-        for key in self.query(FooterKey):
-            key.set_class(toggled.get(key.action, False), "-toggled")
+        self.app.update_status(left=f"[red]Error:[/] {msg[:60]}")
 
     # ── rendering ─────────────────────────────────────────────────────────────
 
@@ -380,7 +268,6 @@ class Overview(App):
         selected_schedule = self._selected_schedule
         runs_table = self.query_one("#runs-table", DataTable)
 
-        # Save cursor position for the schedule we're leaving
         try:
             key = runs_table.coordinate_to_cell_key(runs_table.cursor_coordinate).row_key.value
             if key:
@@ -390,7 +277,6 @@ class Overview(App):
 
         self._current_schedule = selected_schedule
 
-        # Rebuild columns and rows for the selected schedule
         runs_table.clear(columns=True)
         runs_table.add_columns("Status", "Start", "Duration")
         if is_unscheduled := selected_schedule.endswith("__unscheduled__"):
@@ -400,7 +286,6 @@ class Overview(App):
         self._append_run_rows(runs_table, all_runs[:RUNS_PAGE_SIZE], is_unscheduled)
         self._run_offsets[selected_schedule] = RUNS_PAGE_SIZE
 
-        # Restore cursor position for the schedule we're entering
         if selected_schedule in self._run_cursors:
             saved = self._run_cursors[selected_schedule]
             for idx, row_key in enumerate(runs_table.rows):
@@ -455,6 +340,4 @@ class Overview(App):
             left = f"{self._total_schedules} schedules"
 
         right = self._last_refresh.strftime("%H:%M:%S") if self._last_refresh else ""
-
-        self.query_one("#status-left", Label).update(left)
-        self.query_one("#status-right", Label).update(right)
+        self.app.update_status(left=left, right=right)
