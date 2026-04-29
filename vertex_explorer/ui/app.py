@@ -323,10 +323,10 @@ class SchedulesApp(App):
                 pass
 
         table.clear(columns=True)
+
+        table.add_columns("Status", "Start", "Duration")
         if is_unscheduled:
-            table.add_columns("Status", "Start", "Duration", "Name")
-        else:
-            table.add_columns("Status", "Start", "Duration")
+            table.add_columns("Name")
 
         self.query_one("#runs-table").set_class(not is_unscheduled, "-scheduled")
 
