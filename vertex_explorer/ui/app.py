@@ -31,8 +31,12 @@ from vertex_explorer.ui.settings import SettingsScreen
 
 class _Footer(Footer):
     async def recompose(self) -> None:
+        pressed = {k.action for k in self.query(FooterKey) if "-pressed" in k.classes}
         await super().recompose()
         self.app._update_binding_highlights()
+        for key in self.query(FooterKey):
+            if key.action in pressed:
+                key.add_class("-pressed")
 
 
 class SchedulesApp(App):
@@ -161,6 +165,9 @@ class SchedulesApp(App):
 
     def action_quit(self) -> None:
         self._flash_key("quit")
+        self.set_timer(0.005, self._do_quit)
+
+    def _do_quit(self) -> None:
         self.workers.cancel_all()
         _stop = self._driver.stop_application_mode
 
@@ -254,6 +261,12 @@ class SchedulesApp(App):
         self._loading_runs = False
         self.query_one("#status-left", Label).update(f"[red]Error:[/] {msg[:60]}")
         self.query_one("#status-right", Label).update("")
+
+    def _flash_key(self, action: str) -> None:
+        for key in self.query(FooterKey):
+            if key.action == action:
+                key.add_class("-pressed")
+                self.set_timer(0.15, lambda k=key: k.remove_class("-pressed"))
 
     def _update_binding_highlights(self) -> None:
         toggled = {
