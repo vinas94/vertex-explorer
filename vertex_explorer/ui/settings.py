@@ -3,15 +3,9 @@ from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label
+from textual.widgets._input import Selection
 
 import vertex_explorer.config as config
-
-
-class _NavInput(Input):
-    can_focus = False
-
-    def on_blur(self) -> None:
-        self.can_focus = False
 
 
 _GRID = [
@@ -30,6 +24,43 @@ def _current_value(id_: str) -> str:
         "s-runs-page-size": str(config.RUNS_PAGE_SIZE),
         "s-ua-prefixes": ", ".join(config.UA_PREFIXES),
     }[id_]
+
+
+class _NavInput(Input):
+    can_focus = False
+
+    async def _on_mouse_down(self, event) -> None:
+        self.can_focus = True
+        await super()._on_mouse_down(event)
+        self.focus()
+        self.screen.cursor = next(  # type: ignore
+            (r, c)
+            for r, pair in enumerate(_GRID)
+            for c, (_, id_) in enumerate(pair)
+            if id_ == self.id
+        )
+
+    async def _on_click(self, event) -> None:
+        if event.chain == 2:
+            self._select_word()
+            event.prevent_default()
+        elif event.chain >= 3:
+            self.action_select_all()
+            event.prevent_default()
+
+    def _select_word(self) -> None:
+        v, pos = self.value, self.cursor_position
+        start = pos
+        while start > 0 and v[start - 1] not in " ,\t":
+            start -= 1
+        end = pos
+        while end < len(v) and v[end] not in " ,\t":
+            end += 1
+        if start < end:
+            self.selection = Selection(start, end)
+
+    def on_blur(self) -> None:
+        self.can_focus = False
 
 
 class SettingsScreen(ModalScreen[bool]):
@@ -53,7 +84,7 @@ class SettingsScreen(ModalScreen[bool]):
                             yield _NavInput(_current_value(id_), id=id_)
 
     def on_mount(self) -> None:
-        self._highlight()
+        self.watch_cursor()
 
     def on_key(self, event) -> None:
         if event.key in ("ctrl+j", "shift+enter"):
@@ -87,9 +118,6 @@ class SettingsScreen(ModalScreen[bool]):
         self.set_focus(None)
 
     def watch_cursor(self) -> None:
-        self._highlight()
-
-    def _highlight(self) -> None:
         row, col = self.cursor
         for r, pair in enumerate(_GRID):
             for c, (_, id_) in enumerate(pair):
