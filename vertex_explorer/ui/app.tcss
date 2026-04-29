@@ -12,15 +12,22 @@ FooterKey.-toggled .footer-key--description { color: $accent; }
 Toast { width: auto; }
 
 SettingsScreen { align: center middle; }
-#settings-dialog { width: 73; height: 11; background: $surface; border: solid $primary; padding: 1 2; }
+#settings-dialog { width: 80; height: auto; background: $surface; border: solid $primary; padding: 1 2; }
 #settings-header { height: 1; margin-bottom: 1; }
 #settings-title { text-style: bold; width: 1fr; }
 #settings-hint { text-style: italic; color: $text-muted; width: auto; content-align: right middle; }
+#settings-columns { height: auto; }
+.settings-col { height: auto; }
 .settings-col:first-of-type { width: 22; }
-.settings-col:last-of-type { width: 45; margin-left: 2; }
+.settings-col:last-of-type { width: 1fr; margin-left: 2; }
 .setting-row { height: 1; margin-bottom: 1; }
 .settings-col:first-of-type .setting-label { width: 18; }
 .settings-col:first-of-type .setting-row Input { width: 4; height: 1; border: none; padding: 0; }
 .settings-col:last-of-type .setting-label { width: 13; }
-.settings-col:last-of-type .setting-row Input { width: 30; height: 1; border: none; padding: 0; }
+.settings-col:last-of-type .setting-row Input { width: 1fr; height: 1; border: none; padding: 0; }
 Input.-cursor { background: $accent 30%; }
+
+/*
+First settings column width = 22 = 18 (label) + 4 (input)
+Second settings column width = all remaining; label width = 13
+*/
