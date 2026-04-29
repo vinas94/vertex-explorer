@@ -172,7 +172,7 @@ class OverviewTab(Vertical):
     def _load_data(self) -> None:
         def _call(fn, *args):
             try:
-                self.call_from_thread(fn, *args)
+                self.app.call_from_thread(fn, *args)
             except RuntimeError:
                 pass
 

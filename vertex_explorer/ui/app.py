@@ -10,7 +10,7 @@ from textual.widgets._footer import FooterKey
 
 from vertex_explorer.ui.overview import OverviewTab
 from vertex_explorer.ui.settings import SettingsScreen
-from vertex_explorer.ui.tracker import TrackerPane
+from vertex_explorer.ui.tracker import TrackerTab
 
 
 class _Footer(Footer):
@@ -51,8 +51,8 @@ class VertexExplorer(App):
             Label("", id="status-right"),
             id="titlebar",
         )
-        yield OverviewTab(id="overview-pane")
-        yield TrackerPane(id="tracker-pane")
+        yield OverviewTab(id="overview-tab")
+        yield TrackerTab(id="tracker-tab")
         yield _Footer()
 
     def on_mount(self) -> None:
@@ -62,11 +62,11 @@ class VertexExplorer(App):
 
     def action_refresh(self) -> None:
         self._flash_key("refresh")
-        self._active_pane.reload()
+        self._active_tab.reload()
 
     def action_open(self) -> None:
         self._flash_key("open")
-        self._active_pane.open_current()
+        self._active_tab.open_current()
 
     def action_settings(self) -> None:
         self._flash_key("settings", auto_clear=False)
@@ -106,7 +106,7 @@ class VertexExplorer(App):
             else:
                 self.screen.dismiss(False)
             return
-        self._active_pane.escape()
+        self._active_tab.escape()
 
     def action_next_tab(self) -> None:
         if isinstance(self.screen, ModalScreen):
@@ -119,18 +119,18 @@ class VertexExplorer(App):
         try:
             on_overview = self.tab == "overview"
             self.query_one(OverviewTab).display = on_overview
-            self.query_one(TrackerPane).display = not on_overview
+            self.query_one(TrackerTab).display = not on_overview
             self.query_one("#tab-overview").set_class(on_overview, "-active")
             self.query_one("#tab-tracker").set_class(not on_overview, "-active")
-            self._active_pane.focus_default()
+            self._active_tab.focus_default()
         except Exception:
             pass
 
     # ── helpers ───────────────────────────────────────────────────────────────
 
     @property
-    def _active_pane(self) -> OverviewTab | TrackerPane:
-        return self.query_one(OverviewTab if self.tab == "overview" else TrackerPane)
+    def _active_tab(self) -> OverviewTab | TrackerTab:
+        return self.query_one(OverviewTab if self.tab == "overview" else TrackerTab)
 
     def _flash_key(self, action: str, *, auto_clear: bool = True) -> None:
         for key in self.query(FooterKey):
@@ -142,11 +142,11 @@ class VertexExplorer(App):
     def _update_binding_highlights(self) -> None:
         toggled = {}
         if self.tab == "overview":
-            pane = self.query_one(OverviewTab)
+            tab = self.query_one(OverviewTab)
             toggled = {
-                "toggle_region": pane.region is not None,
-                "toggle_active": pane.active,
-                "focus_filter": bool(pane.filter),
+                "toggle_region": tab.region is not None,
+                "toggle_active": tab.active,
+                "focus_filter": bool(tab.filter),
             }
         for key in self.query(FooterKey):
             key.set_class(toggled.get(key.action, False), "-toggled")

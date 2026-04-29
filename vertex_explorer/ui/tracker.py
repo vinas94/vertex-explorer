@@ -1,7 +1,7 @@
 from textual.containers import Vertical
 
 
-class TrackerPane(Vertical):
+class TrackerTab(Vertical):
     def focus_default(self) -> None:
         pass
 
