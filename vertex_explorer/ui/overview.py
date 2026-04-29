@@ -39,7 +39,7 @@ class _Footer(Footer):
                 key.add_class("-pressed")
 
 
-class SchedulesApp(App):
+class Overview(App):
     BINDINGS = [
         Binding("R", "refresh", "Refresh"),
         Binding("f", "focus_filter", "Filter"),

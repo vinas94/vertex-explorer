@@ -8,7 +8,7 @@ import sys
 import google.auth
 import google.auth.exceptions
 
-from vertex_explorer.ui.app import SchedulesApp
+from vertex_explorer.ui.overview import Overview
 
 
 def main():
@@ -20,7 +20,7 @@ def main():
         sys.exit(1)
 
     logging.root.handlers.clear()
-    SchedulesApp().run()
+    Overview().run()
 
 
 if __name__ == "__main__":
