@@ -9,6 +9,7 @@
 #runs-table.-scheduled { width: 23%; }
 FooterKey.-toggled .footer-key--key { background: $accent; color: $text; }
 FooterKey.-toggled .footer-key--description { color: $accent; }
+Toast { width: auto; }
 
 SettingsScreen { align: center middle; }
 #settings-dialog { width: 73; height: 11; background: $surface; border: solid $primary; padding: 1 2; }
