@@ -1,3 +1,5 @@
+import re
+
 import pendulum
 from rich.text import Text
 
@@ -24,6 +26,11 @@ def _fmt_region(resource_name: str) -> str:
     return region.replace("europe-", "")
 
 
+def _fmt_name(resource_name: str) -> str:
+    _, project, _, region, _, resource_id = resource_name.split("/")
+    return re.sub(r"-\d{14,}$", "", resource_id)
+
+
 def _fmt_time(ts) -> str:
     try:
         return pendulum.instance(ts).format("YYYY-MM-DD HH:mm")
@@ -36,10 +43,10 @@ def _fmt_duration(start, end) -> str:
         d = pendulum.instance(end) - pendulum.instance(start)
         h, m, s = d.hours, d.minutes, d.remaining_seconds
         if h:
-            return f"{h}h {m:02d}m"
+            return f"{h:2d}h {m:02d}m"
         if m:
-            return f"{m}m {s:02d}s"
-        return f"{s}s"
+            return f"{m:2d}m {s:02d}s"
+        return f"    {s:2d}s"
     except Exception:
         return "-"
 

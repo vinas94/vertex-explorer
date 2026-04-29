@@ -1,14 +1,6 @@
-import re
 from datetime import datetime, timezone
 
-import pendulum
-
-from vertex_explorer.config import PROJECT, UA_LOOKBACK_DAYS, UA_PREFIXES
-
-
-def fmt_name(resource_name: str) -> str:
-    _, project, _, region, _, resource_id = resource_name.split("/")
-    return re.sub(r"-\d{14,}$", "", resource_id)
+from vertex_explorer.config import PROJECT
 
 
 def synthetic_name(location: str) -> str:
@@ -46,14 +38,3 @@ def build_runs_index(all_runs: list) -> dict[str, list]:
     for runs in by_sched.values():
         runs.sort(key=_key, reverse=True)
     return by_sched
-
-
-def build_ua_failed_runs(all_runs: list) -> list:
-    cutoff = pendulum.now("UTC").subtract(days=UA_LOOKBACK_DAYS)
-    return [
-        r
-        for r in all_runs
-        if r.state.name == "PIPELINE_STATE_FAILED"
-        and any(fmt_name(r.name).startswith(p) for p in UA_PREFIXES)
-        and (not r.end_time or pendulum.instance(r.end_time) >= cutoff)
-    ]

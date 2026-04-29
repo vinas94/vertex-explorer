@@ -16,10 +16,11 @@ from textual.widgets._footer import FooterKey
 from vertex_explorer.client import fetch_all
 from vertex_explorer.config import LOCATIONS, RUN_STATE_STYLE, RUNS_PAGE_SIZE
 from vertex_explorer.filters import parse_filter
-from vertex_explorer.processor import build_runs_index, build_schedules, fmt_name
+from vertex_explorer.processor import build_runs_index, build_schedules
 from vertex_explorer.ui.formatters import (
     _console_url,
     _fmt_duration,
+    _fmt_name,
     _fmt_region,
     _fmt_time,
     _highlight,
@@ -365,21 +366,14 @@ class SchedulesApp(App):
         cutoff_24h = pendulum.now("UTC").subtract(hours=24)
         for run in runs:
             state_name = run.state.name
-            state_cell = Text(state_name.replace("PIPELINE_STATE_", ""), style=RUN_STATE_STYLE.get(state_name, "dim"))
+            state = Text(state_name.replace("PIPELINE_STATE_", ""), style=RUN_STATE_STYLE.get(state_name, "dim"))
             recent_fail = (
                 state_name == "PIPELINE_STATE_FAILED" and run.end_time and pendulum.instance(run.end_time) >= cutoff_24h
             )
-            start_cell = Text(_fmt_time(run.start_time), style="red" if recent_fail else "")
-            if is_unscheduled:
-                table.add_row(
-                    state_cell,
-                    start_cell,
-                    _fmt_duration(run.start_time, run.end_time),
-                    fmt_name(run.name),
-                    key=run.name,
-                )
-            else:
-                table.add_row(state_cell, start_cell, _fmt_duration(run.start_time, run.end_time), key=run.name)
+            start = Text(_fmt_time(run.start_time), style="red" if recent_fail else "")
+            duration = Text(_fmt_duration(run.start_time, run.end_time))
+            extra = (Text(_fmt_name(run.name)),) if is_unscheduled else ()
+            table.add_row(state, start, duration, *extra, key=run.name)
 
     @property
     def _selected_schedule(self) -> str | None:
