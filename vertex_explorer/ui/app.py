@@ -30,7 +30,7 @@ from vertex_explorer.ui.settings import SettingsScreen
 
 class SchedulesApp(App):
     BINDINGS = [
-        Binding("R", "refresh", "Refresh", priority=True),
+        Binding("R", "refresh", "Refresh"),
         Binding("f", "focus_filter", "Filter"),
         Binding("r", "toggle_region", "Region"),
         Binding("a", "toggle_active", "Active"),
@@ -53,7 +53,6 @@ class SchedulesApp(App):
         self._last_refresh: datetime | None = None
         self._loading_schedules = False
         self._loading_runs = False
-        self._suppress_highlight = False
         self._run_cursors: dict[str, str] = {}
         self._run_offsets: dict[str, int] = {}
         self._current_schedule: str | None = None
@@ -87,6 +86,7 @@ class SchedulesApp(App):
         st.focus()
 
         rt = self.query_one("#runs-table", DataTable)
+        rt.add_columns("Status", "Start", "Duration", "Name")
         rt.cursor_type = "row"
 
         self.action_refresh()
@@ -96,13 +96,17 @@ class SchedulesApp(App):
     def action_refresh(self) -> None:
         if self._loading_schedules or self._loading_runs:
             return
+
         self._loading_schedules = True
         self._loading_runs = True
         self._schedules = []
         self._runs_by_schedule = {}
+
         self.query_one("#schedules-table", DataTable).clear()
         rt = self.query_one("#runs-table", DataTable)
         rt.clear(columns=True)
+        rt.add_columns("Status", "Start", "Duration", "Name")
+
         self._update_status()
         self._load()
 
@@ -190,7 +194,7 @@ class SchedulesApp(App):
 
     @on(DataTable.RowHighlighted, "#schedules-table")
     def _on_schedule_highlighted(self, event: DataTable.RowHighlighted) -> None:
-        if not self._suppress_highlight and event.row_key.value != self._current_schedule:
+        if event.row_key.value != self._current_schedule:
             self._repopulate_runs()
 
     @on(DataTable.RowHighlighted, "#runs-table")
@@ -298,12 +302,10 @@ class SchedulesApp(App):
                 count += 1
 
         if saved_key:
-            self._suppress_highlight = True
             for idx, row_key in enumerate(table.rows):
                 if row_key.value == saved_key:
                     table.move_cursor(row=idx)
                     break
-            self._suppress_highlight = False
 
         self._update_status(count)
 
