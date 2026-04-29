@@ -35,7 +35,7 @@ class VertexExplorer(App):
     CSS_PATH = "styles.tcss"
 
     TABS = ["overview", "tracker"]
-    tab: reactive[str] = reactive("overview")
+    tab: reactive[str] = reactive("overview", init=False)
 
     # ── layout ────────────────────────────────────────────────────────────────
 
