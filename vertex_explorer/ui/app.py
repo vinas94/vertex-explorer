@@ -108,7 +108,10 @@ class SchedulesApp(App):
         rt.add_columns("Status", "Start", "Duration", "Name")
 
         self._update_status()
-        self._load()
+        self._load_data()
+
+    def action_focus_filter(self) -> None:
+        self.query_one("#filter-input", Input).focus()
 
     def action_toggle_region(self) -> None:
         cycle = dict(zip([None, *LOCATIONS], [*LOCATIONS, None]))
@@ -121,15 +124,27 @@ class SchedulesApp(App):
         self._repopulate_schedules()
         self._update_binding_highlights()
 
+    def action_open(self) -> None:
+        st = self.query_one("#schedules-table", DataTable)
+        rt = self.query_one("#runs-table", DataTable)
+        try:
+            if st.has_focus:
+                name = st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
+                if name and not name.endswith("__unscheduled__"):
+                    webbrowser.open(_console_url(name, "schedules"))
+            elif rt.has_focus:
+                name = rt.coordinate_to_cell_key(rt.cursor_coordinate).row_key.value
+                if name:
+                    webbrowser.open(_console_url(name, "runs"))
+        except Exception:
+            pass
+
     def action_settings(self) -> None:
-        def _on_dismiss(saved: bool) -> None:
-            if saved:
+        def _on_dismiss(needs_refresh: bool) -> None:
+            if needs_refresh:
                 self.action_refresh()
 
         self.push_screen(SettingsScreen(), _on_dismiss)
-
-    def action_focus_filter(self) -> None:
-        self.query_one("#filter-input", Input).focus()
 
     def action_quit(self) -> None:
         self.workers.cancel_all()
@@ -156,21 +171,6 @@ class SchedulesApp(App):
         fi = self.query_one("#filter-input", Input)
         if fi.has_focus:
             self.query_one("#schedules-table", DataTable).focus()
-
-    def action_open(self) -> None:
-        st = self.query_one("#schedules-table", DataTable)
-        rt = self.query_one("#runs-table", DataTable)
-        try:
-            if st.has_focus:
-                name = st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
-                if name and not name.endswith("/__unscheduled__"):
-                    webbrowser.open(_console_url(name, "schedules"))
-            elif rt.has_focus:
-                name = rt.coordinate_to_cell_key(rt.cursor_coordinate).row_key.value
-                if name:
-                    webbrowser.open(_console_url(name, "runs"))
-        except Exception:
-            pass
 
     def action_focus_right(self) -> None:
         st = self.query_one("#schedules-table", DataTable)
@@ -206,7 +206,7 @@ class SchedulesApp(App):
     # ── data loading ──────────────────────────────────────────────────────────
 
     @work(thread=True)
-    def _load(self) -> None:
+    def _load_data(self) -> None:
         def _call(fn, *args):
             try:
                 self.call_from_thread(fn, *args)
