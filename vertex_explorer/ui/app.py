@@ -155,9 +155,12 @@ class SchedulesApp(App):
             pass
 
     def action_settings(self) -> None:
-        self._flash_key("settings")
+        self._flash_key("settings", auto_clear=False)
 
         def _on_dismiss(needs_refresh: bool) -> None:
+            for key in self.query(FooterKey):
+                if key.action == "settings":
+                    key.remove_class("-pressed")
             if needs_refresh:
                 self.action_refresh()
 
@@ -187,7 +190,7 @@ class SchedulesApp(App):
             if isinstance(self.focused, Input):
                 self.screen.set_focus(None)
             else:
-                self.pop_screen()
+                self.screen.dismiss(False)
             return
         fi = self.query_one("#filter-input", Input)
         if fi.has_focus:
@@ -262,11 +265,12 @@ class SchedulesApp(App):
         self.query_one("#status-left", Label).update(f"[red]Error:[/] {msg[:60]}")
         self.query_one("#status-right", Label).update("")
 
-    def _flash_key(self, action: str) -> None:
+    def _flash_key(self, action: str, *, auto_clear: bool = True) -> None:
         for key in self.query(FooterKey):
             if key.action == action:
                 key.add_class("-pressed")
-                self.set_timer(0.15, lambda k=key: k.remove_class("-pressed"))
+                if auto_clear:
+                    self.set_timer(0.15, lambda k=key: k.remove_class("-pressed"))
 
     def _update_binding_highlights(self) -> None:
         toggled = {
