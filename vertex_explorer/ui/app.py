@@ -103,7 +103,6 @@ class SchedulesApp(App):
         self.query_one("#schedules-table", DataTable).clear()
         rt = self.query_one("#runs-table", DataTable)
         rt.clear(columns=True)
-        rt.add_columns("Status", "Start", "Duration", "Name")
         self._update_status()
         self._load()
 
@@ -322,17 +321,22 @@ class SchedulesApp(App):
             except Exception:
                 pass
 
-        table.clear(columns=True)
+        all_runs = self._runs_by_schedule.get(selected, []) if selected else []
+        self._run_offsets[selected] = RUNS_PAGE_SIZE if selected else 0
 
+        table.clear(columns=True)
         table.add_columns("Status", "Start", "Duration")
         if is_unscheduled:
             table.add_columns("Name")
 
-        self.query_one("#runs-table").set_class(not is_unscheduled, "-scheduled")
-
-        all_runs = self._runs_by_schedule.get(selected, []) if selected else []
-        self._run_offsets[selected] = RUNS_PAGE_SIZE if selected else 0
         self._append_run_rows(table, all_runs[:RUNS_PAGE_SIZE], is_unscheduled)
+        if all_runs:
+            self.query_one("#runs-table").set_class(not is_unscheduled, "-scheduled")
+            if table._require_update_dimensions:
+                table._require_update_dimensions = False
+                new_rows = table._new_rows.copy()
+                table._new_rows.clear()
+                table._update_dimensions(new_rows)
 
         if selected and selected in self._run_cursors:
             saved = self._run_cursors[selected]
