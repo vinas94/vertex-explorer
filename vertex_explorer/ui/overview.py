@@ -7,7 +7,7 @@ from rich.text import Text
 from textual import on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
 from textual.screen import ModalScreen
 from textual.widgets import DataTable, Footer, Input, Label
@@ -49,14 +49,16 @@ class Overview(App):
         Binding("s", "settings", "Settings"),
         Binding("q", "quit", "Quit"),
         Binding("escape", "escape", "Escape", show=False, priority=True),
+        Binding("tab", "next_tab", show=False, priority=True),
         Binding("right", "focus_right", show=False),
         Binding("left", "focus_left", show=False),
     ]
-    CSS_PATH = "app.tcss"
+    CSS_PATH = "style.tcss"
 
     active: reactive[bool] = reactive(False)
     region: reactive[str | None] = reactive(None)
     filter: reactive[str] = reactive("")
+    tab: reactive[str] = reactive("overview")
 
     def __init__(self) -> None:
         super().__init__()
@@ -75,16 +77,23 @@ class Overview(App):
     def compose(self) -> ComposeResult:
         yield Horizontal(
             Label("", id="status-left"),
+            Horizontal(
+                Label("Overview", id="tab-overview", classes="tab"),
+                Label("Tracker", id="tab-tracker", classes="tab"),
+                id="tab-indicator",
+            ),
             Label("VERTEX EXPLORER", id="status-center"),
             Label("", id="status-right"),
             id="titlebar",
         )
-        yield Input(placeholder="filter...", id="filter-input")
-        yield Horizontal(
-            DataTable(id="schedules-table", cursor_foreground_priority="renderable"),
-            DataTable(id="runs-table", cursor_foreground_priority="renderable"),
-            id="content",
-        )
+        with Vertical(id="overview-pane"):
+            yield Input(placeholder="filter...", id="filter-input")
+            yield Horizontal(
+                DataTable(id="schedules-table", cursor_foreground_priority="renderable"),
+                DataTable(id="runs-table", cursor_foreground_priority="renderable"),
+                id="content",
+            )
+        yield Vertical(id="tracker-pane")
         yield _Footer()
 
     def on_mount(self) -> None:
