@@ -81,6 +81,10 @@ class SettingsScreen(ModalScreen[bool]):
         self.watch_cursor()
 
     def on_key(self, event) -> None:
+        if event.key == "s" and self.focused is None:
+            self.dismiss(False)
+            event.stop()
+            return
         if event.key in ("ctrl+j", "shift+enter"):
             self.set_focus(None)
             needs_refresh, any_changed = self._save()
@@ -89,8 +93,10 @@ class SettingsScreen(ModalScreen[bool]):
             self.dismiss(needs_refresh)
             event.stop()
             return
+
         if self.focused is not None:
             return
+
         row, col = self.cursor
         if event.key == "up":
             self.cursor = (max(0, row - 1), col)
@@ -106,6 +112,7 @@ class SettingsScreen(ModalScreen[bool]):
             inp.focus()
         else:
             return
+
         event.stop()
 
     def on_click(self, event) -> None:
@@ -122,6 +129,9 @@ class SettingsScreen(ModalScreen[bool]):
                 self.query_one(f"#{id_}").set_class(r == row and c == col, "-cursor")
 
     def _save(self) -> tuple[bool, bool]:
+        def _str(id: str) -> str:
+            return self.query_one(id, Input).value.strip()
+
         def _int(id: str, fallback: int) -> int:
             try:
                 return int(self.query_one(id, Input).value.strip())
@@ -131,11 +141,12 @@ class SettingsScreen(ModalScreen[bool]):
         def _list(id: str) -> list[str]:
             return [v.strip() for v in self.query_one(id, Input).value.split(",") if v.strip()]
 
-        new_project = self.query_one("#s-project", Input).value.strip()
-        new_locations = _list("#s-locations")
         new_runs_days = _int("#s-runs-days", config.RUNS_DAYS)
         new_schedules_days = _int("#s-schedules-days", config.SCHEDULES_DAYS)
         new_runs_page_size = _int("#s-runs-page-size", config.RUNS_PAGE_SIZE)
+
+        new_project = _str("#s-project")
+        new_locations = _list("#s-locations")
         new_ua_prefixes = _list("#s-ua-prefixes")
 
         needs_refresh = (

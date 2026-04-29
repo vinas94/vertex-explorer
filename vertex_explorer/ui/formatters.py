@@ -33,7 +33,7 @@ def _fmt_name(resource_name: str) -> str:
 
 def _fmt_time(ts) -> str:
     try:
-        return pendulum.instance(ts).format("YYYY-MM-DD HH:mm")
+        return pendulum.instance(ts).format("MM-DD HH:mm")
     except Exception:
         return "-"
 
