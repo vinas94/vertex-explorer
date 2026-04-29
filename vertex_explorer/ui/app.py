@@ -56,6 +56,7 @@ class SchedulesApp(App):
 
     active: reactive[bool] = reactive(False)
     region: reactive[str | None] = reactive(None)
+    filter: reactive[str] = reactive("")
 
     def __init__(self) -> None:
         super().__init__()
@@ -138,6 +139,10 @@ class SchedulesApp(App):
         self._repopulate_schedules()
         self._update_binding_highlights()
 
+    def watch_filter(self) -> None:
+        self._repopulate_schedules()
+        self._update_binding_highlights()
+
     def action_open(self) -> None:
         self._flash_key("open")
         st = self.query_one("#schedules-table", DataTable)
@@ -209,8 +214,8 @@ class SchedulesApp(App):
     # ── events ────────────────────────────────────────────────────────────────
 
     @on(Input.Changed, "#filter-input")
-    def _on_filter_changed(self, _: Input.Changed) -> None:
-        self._repopulate_schedules()
+    def _on_filter_changed(self, event: Input.Changed) -> None:
+        self.filter = event.value
 
     @on(Input.Submitted, "#filter-input")
     def _on_filter_submitted(self, _: Input.Submitted) -> None:
