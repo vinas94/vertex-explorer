@@ -313,7 +313,7 @@ class SchedulesApp(App):
         self._update_status(count)
 
     def _repopulate_runs(self) -> None:
-        selected_schedule = self._selected_schedule()
+        selected_schedule = self._selected_schedule
         runs_table = self.query_one("#runs-table", DataTable)
 
         # Save cursor position for the schedule we're leaving
@@ -381,6 +381,7 @@ class SchedulesApp(App):
             else:
                 table.add_row(state_cell, start_cell, _fmt_duration(run.start_time, run.end_time), key=run.name)
 
+    @property
     def _selected_schedule(self) -> str | None:
         try:
             st = self.query_one("#schedules-table", DataTable)
@@ -388,14 +389,15 @@ class SchedulesApp(App):
         except Exception:
             return None
 
-    def _update_status(self, count: int | None = None) -> None:
+    def _update_status(self, visible_schedules: int | None = None) -> None:
         if self._loading_schedules or self._loading_runs:
             left = f"Fetching {'schedules' if self._loading_schedules else 'runs'}..."
-        elif count is not None and count != self._total_schedules:
-            left = f"{count}/{self._total_schedules} schedules"
+        elif visible_schedules is not None and visible_schedules != self._total_schedules:
+            left = f"{visible_schedules}/{self._total_schedules} schedules"
         else:
             left = f"{self._total_schedules} schedules"
 
         right = self._last_refresh.strftime("%H:%M:%S") if self._last_refresh else ""
+
         self.query_one("#status-left", Label).update(left)
         self.query_one("#status-right", Label).update(right)
