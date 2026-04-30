@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 
 from textual import work
 from textual.app import App, ComposeResult
@@ -11,6 +12,7 @@ from textual.widgets._footer import FooterKey
 
 import vertex_explorer.config as config
 from vertex_explorer.client import fetch_all
+from vertex_explorer.processor import build_runs_index, build_schedules
 from vertex_explorer.ui.overview import OverviewTab
 from vertex_explorer.ui.settings import SettingsScreen
 from vertex_explorer.ui.tracker import TrackerTab
@@ -41,8 +43,16 @@ class VertexExplorer(App):
     tab: reactive[str] = reactive("overview")
 
     notification: str = ""
+
+    schedules: list[dict] = []
+    schedule_names: dict[str, str] = {}
+    runs: list = []
+    runs_by_schedule: dict[str, list] = {}
+
     loading_schedules: bool = False
     loading_runs: bool = False
+    last_refresh: datetime | None = None
+
     _auth_granted: bool = False
     _persistent_pressed: set[str] = set()
 
@@ -84,6 +94,10 @@ class VertexExplorer(App):
         self._flash_key("refresh")
         if self.loading_schedules or self.loading_runs:
             return
+        self.schedules = []
+        self.schedule_names = {}
+        self.runs = []
+        self.runs_by_schedule = {}
         self.query_one(OverviewTab).reset()
         self.query_one(TrackerTab).reset()
         self.fetch_data()
@@ -150,7 +164,7 @@ class VertexExplorer(App):
         self._active_tab.focus_default()
         self.refresh_status()
 
-    # ── data loading ─────────────────────────────────────────────────────────
+    # ── data ─────────────────────────────────────────────────────────────────
 
     def fetch_data(self) -> None:
         if self.loading_schedules or self.loading_runs:
@@ -258,9 +272,5 @@ class VertexExplorer(App):
 
     def refresh_status(self, right: str = "") -> None:
         left = self.notification or getattr(self._active_tab, "notification", "")
-        self.query_one("#status-left", Label).update(left)
-        self.query_one("#status-right", Label).update(right)
-
-    def update_status(self, left: str = "", right: str = "") -> None:
         self.query_one("#status-left", Label).update(left)
         self.query_one("#status-right", Label).update(right)
