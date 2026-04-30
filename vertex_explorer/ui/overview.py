@@ -3,13 +3,12 @@ from datetime import datetime, timezone
 
 import pendulum
 from rich.text import Text
-from textual import events, on, work
+from textual import events, on
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
 from textual.widgets import DataTable, Input
 
-from vertex_explorer.client import fetch_all
 from vertex_explorer.config import LOCATIONS, RUN_STATE_STYLE, RUNS_PAGE_SIZE
 from vertex_explorer.filters import parse_filter
 from vertex_explorer.processor import build_runs_index, build_schedules
@@ -106,7 +105,7 @@ class OverviewTab(Vertical):
         self._rt_name_col = rt.add_column("Name")
 
         self._update_status()
-        self._load_data()
+        self.app.fetch_data()
 
     def open_current(self) -> None:
         st = self.query_one("#schedules-table", _DataTable)
@@ -183,22 +182,6 @@ class OverviewTab(Vertical):
 
     # ── data loading ──────────────────────────────────────────────────────────
 
-    @work(thread=True)
-    def _load_data(self) -> None:
-        def _call(fn, *args):
-            try:
-                self.app.call_from_thread(fn, *args)
-            except RuntimeError:
-                pass
-
-        try:
-            fetch_all(
-                on_schedules=lambda s: _call(self._on_schedules_ready, s),
-                on_runs=lambda r: _call(self._on_runs_ready, r),
-            )
-        except Exception as e:
-            _call(self._on_error, str(e))
-
     def _on_schedules_ready(self, schedules_by_loc: dict) -> None:
         self._schedules = build_schedules(schedules_by_loc)
         self._total_schedules = sum(1 for s in self._schedules if not s.get("_synthetic"))
@@ -222,10 +205,9 @@ class OverviewTab(Vertical):
             except Exception:
                 pass
 
-    def _on_error(self, msg: str) -> None:
+    def _on_fetch_error(self) -> None:
         self._loading_schedules = False
         self._loading_runs = False
-        self.app.update_status(left=f"[red]Error:[/] {msg[:60]}")
 
     # ── rendering ─────────────────────────────────────────────────────────────
 

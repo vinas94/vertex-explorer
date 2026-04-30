@@ -1,5 +1,6 @@
 import os
 
+from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
@@ -8,6 +9,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Footer, Input, Label
 from textual.widgets._footer import FooterKey
 
+from vertex_explorer.client import fetch_all
 from vertex_explorer.ui.overview import OverviewTab
 from vertex_explorer.ui.settings import SettingsScreen
 from vertex_explorer.ui.tracker import TrackerTab
@@ -134,6 +136,26 @@ class VertexExplorer(App):
             self._active_tab.focus_default()
         except Exception:
             pass
+
+    # ── data loading ─────────────────────────────────────────────────────────
+
+    @work(thread=True)
+    def fetch_data(self) -> None:
+        def _call(fn, *args, **kwargs):
+            try:
+                self.call_from_thread(fn, *args, **kwargs)
+            except RuntimeError:
+                pass
+
+        overview = self.query_one(OverviewTab)
+        try:
+            fetch_all(
+                on_schedules=lambda s: _call(overview._on_schedules_ready, s),
+                on_runs=lambda r: _call(overview._on_runs_ready, r),
+            )
+        except Exception as e:
+            _call(self.update_status, left=f"[red]Error:[/] {str(e)[:60]}")
+            _call(overview._on_fetch_error)
 
     # ── helpers ───────────────────────────────────────────────────────────────
 
