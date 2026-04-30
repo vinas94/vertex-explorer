@@ -73,7 +73,7 @@ def fetch_all(on_schedules=None, on_runs=None, on_error=None) -> dict:
             return
         with lock_sched:
             schedules[loc] = data
-            if len(schedules) == len(config.LOCATIONS) and on_schedules:
+            if len(schedules) == len(config.REGIONS) and on_schedules:
                 on_schedules(dict(schedules))
 
     def _on_runs_done(loc, future):
@@ -86,11 +86,11 @@ def fetch_all(on_schedules=None, on_runs=None, on_error=None) -> dict:
             return
         with lock_runs:
             runs[loc] = data
-            if len(runs) == len(config.LOCATIONS) and on_runs:
+            if len(runs) == len(config.REGIONS) and on_runs:
                 on_runs(dict(runs))
 
-    with ThreadPoolExecutor(max_workers=max(1, len(config.LOCATIONS) * 2 - 1)) as executor:
-        for loc in config.LOCATIONS:
+    with ThreadPoolExecutor(max_workers=max(1, len(config.REGIONS) * 2 - 1)) as executor:
+        for loc in config.REGIONS:
             fs = executor.submit(fetch_location_schedules, loc, sched_filter)
             fr = executor.submit(fetch_location_runs, loc, runs_filter)
             fs.add_done_callback(lambda f, loc=loc: _on_sched_done(loc, f))

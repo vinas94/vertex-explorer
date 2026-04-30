@@ -82,7 +82,7 @@ class OverviewTab(Vertical):
         self.app.update_binding_highlights()
 
     def action_toggle_region(self) -> None:
-        cycle = dict(zip([None, *config.LOCATIONS], [*config.LOCATIONS, None]))
+        cycle = dict(zip([None, *config.REGIONS], [*config.REGIONS, None]))
         self.region_ = cycle[self.region_]
         self.repopulate_schedules()
         self.app.update_binding_highlights()
@@ -176,7 +176,7 @@ class OverviewTab(Vertical):
         self._st_prev_col = table.add_column("Prev", width=5)
         table.add_column("Name")
 
-        region_rank = {loc: len(config.LOCATIONS) - i - 1 for i, loc in enumerate(config.LOCATIONS)}
+        region_rank = {loc: len(config.REGIONS) - i - 1 for i, loc in enumerate(config.REGIONS)}
 
         def _sort_key(s):
             return (

@@ -13,7 +13,7 @@ colorlog.basicConfig(
 _SETTINGS_PATH = Path.home() / ".config" / "vertex-explorer" / "settings.json"
 
 PROJECT = "martin-test-datalab"
-LOCATIONS = ["europe-west3", "europe-west4"]
+REGIONS = ["europe-west3", "europe-west4"]
 
 RUNS_DAYS = 3
 SCHEDULES_DAYS = 3
@@ -30,7 +30,7 @@ RUN_STATE_STYLE = {
 
 
 def load_settings() -> None:
-    global PROJECT, LOCATIONS, RUNS_DAYS, SCHEDULES_DAYS, SHORT_REGIONS
+    global PROJECT, REGIONS, RUNS_DAYS, SCHEDULES_DAYS, SHORT_REGIONS
 
     try:
         data = json.loads(_SETTINGS_PATH.read_text())
@@ -39,7 +39,7 @@ def load_settings() -> None:
 
     try:
         PROJECT = data.get("PROJECT", PROJECT)
-        LOCATIONS = list(dict.fromkeys(data.get("LOCATIONS", LOCATIONS)))
+        REGIONS = list(dict.fromkeys(data.get("REGIONS", REGIONS)))
         RUNS_DAYS = data.get("RUNS_DAYS", RUNS_DAYS)
         SCHEDULES_DAYS = data.get("SCHEDULES_DAYS", SCHEDULES_DAYS)
         SHORT_REGIONS = bool(data.get("SHORT_REGIONS", SHORT_REGIONS))
@@ -53,7 +53,7 @@ def save_settings() -> None:
         json.dumps(
             {
                 "PROJECT": PROJECT,
-                "LOCATIONS": LOCATIONS,
+                "REGIONS": REGIONS,
                 "RUNS_DAYS": RUNS_DAYS,
                 "SCHEDULES_DAYS": SCHEDULES_DAYS,
                 "SHORT_REGIONS": SHORT_REGIONS,

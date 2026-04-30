@@ -9,7 +9,7 @@ from vertex_explorer.ui.widgets import ClickableInput, Tick
 
 _GRID = [
     [("Runs Days", "s-runs-days"), ("Project", "s-project")],
-    [("Schedules Days", "s-schedules-days"), ("Regions", "s-locations")],
+    [("Schedules Days", "s-schedules-days"), ("Regions", "s-regions")],
     [("Short Regions", "s-short-regions", "checkbox"), None],
 ]
 
@@ -24,7 +24,7 @@ def _current_value(id_: str) -> str:
         "s-runs-days": str(config.RUNS_DAYS),
         "s-project": config.PROJECT,
         "s-schedules-days": str(config.SCHEDULES_DAYS),
-        "s-locations": ", ".join(config.LOCATIONS),
+        "s-regions": ", ".join(config.REGIONS),
     }[id_]
 
 
@@ -156,19 +156,19 @@ class SettingsScreen(ModalScreen[bool]):
         new_runs_days = _int("#s-runs-days", config.RUNS_DAYS)
         new_schedules_days = _int("#s-schedules-days", config.SCHEDULES_DAYS)
         new_project = self.query_one("#s-project", Input).value.strip()
-        new_locations = _list("#s-locations")
+        new_regions = _list("#s-regions")
         new_short_regions = self.query_one("#s-short-regions", Tick).value
 
         needs_refresh = (
             new_project != config.PROJECT
-            or new_locations != config.LOCATIONS
+            or new_regions != config.REGIONS
             or new_runs_days != config.RUNS_DAYS
             or new_schedules_days != config.SCHEDULES_DAYS
         )
         changed = new_short_regions != config.SHORT_REGIONS
 
         config.PROJECT = new_project
-        config.LOCATIONS = new_locations
+        config.REGIONS = new_regions
         config.RUNS_DAYS = new_runs_days
         config.SCHEDULES_DAYS = new_schedules_days
         config.SHORT_REGIONS = new_short_regions

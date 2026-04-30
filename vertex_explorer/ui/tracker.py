@@ -59,7 +59,7 @@ class TrackerTab(Vertical):
     # ── actions ───────────────────────────────────────────────────────────────
 
     def action_toggle_region(self) -> None:
-        cycle = dict(zip([None, *config.LOCATIONS], [*config.LOCATIONS, None]))
+        cycle = dict(zip([None, *config.REGIONS], [*config.REGIONS, None]))
         self.region_ = cycle[self.region_]
         self.repopulate()
         self.app.update_binding_highlights()
