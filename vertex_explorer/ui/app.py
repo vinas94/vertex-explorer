@@ -248,6 +248,10 @@ class VertexExplorer(App):
         for key in self.query(FooterKey):
             key.set_class(toggled.get(key.action, False), "-toggled")
 
+    def repopulate(self) -> None:
+        self.query_one(OverviewTab).repopulate()
+        self.query_one(TrackerTab).repopulate()
+
     def set_notification(self, msg: str) -> None:
         self.notification = msg
         self.refresh_status()

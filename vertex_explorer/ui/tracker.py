@@ -44,6 +44,13 @@ class TrackerTab(Vertical):
     def focus_default(self) -> None:
         self.query_one("#tracker-table", _DataTable).focus()
 
+    def repopulate(self) -> None:
+        t = self.query_one("#tracker-table", _DataTable)
+        t.clear(columns=True)
+        t.add_columns("Status", "Start", "Duration", "Schedule", "Region")
+        self._append_rows(t, self._all_runs[:RUNS_PAGE_SIZE])
+        self._offset = RUNS_PAGE_SIZE
+
     def reset(self) -> None:
         self._all_runs = []
         self._schedule_names = {}

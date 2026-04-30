@@ -19,7 +19,7 @@ FooterKey.-pressed .footer-key--description { color: $accent; }
 Toast { width: auto; }
 
 SettingsScreen { align: center middle; }
-#settings-dialog { width: 70; height: auto; background: $surface; border: solid $primary; padding: 1 2; }
+#settings-dialog { width: 63; height: auto; background: $surface; border: solid $primary; padding: 1 2; }
 #settings-header { height: 1; margin-bottom: 1; }
 #settings-title { text-style: bold; width: 1fr; }
 #settings-hint { text-style: italic; color: $text-muted; width: auto; content-align: right middle; }
@@ -30,12 +30,12 @@ SettingsScreen { align: center middle; }
 .setting-row { height: 1; margin-bottom: 1; }
 .settings-col:first-of-type .setting-label { width: 16; }
 .settings-col:first-of-type .setting-row Input { width: 3; height: 1; border: none; padding: 0; }
-.settings-col:last-of-type .setting-label { width: 15; }
+.settings-col:last-of-type .setting-label { width: 9; }
 .settings-col:last-of-type .setting-row Input { width: 1fr; height: 1; border: none; padding: 0; }
 Input.-cursor { background: $accent 30%; }
 .setting-tick { height: 1; width: 3; padding: 0; background: transparent; }
 
 /*
-First settings column width = 22 = 18 (label) + 4 (input)
-Second settings column width = all remaining; label width = 13
+First settings column width = 19 = 16 (label) + 3 (input)
+Second settings column width = all remaining; label width = 9
 */

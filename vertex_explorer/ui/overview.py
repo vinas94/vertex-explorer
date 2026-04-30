@@ -141,6 +141,10 @@ class OverviewTab(Vertical):
         if fi.has_focus:
             self.focus_default()
 
+    def repopulate(self) -> None:
+        self._repopulate_schedules()
+        self._repopulate_runs()
+
     def reset(self) -> None:
         self._schedules = []
         self._runs_by_schedule = {}
