@@ -316,7 +316,10 @@ class OverviewTab(Vertical):
                     runs_table.move_cursor(row=idx)
                     break
 
+        # set_class triggers refresh() before layout recalculates, caching rows at the
+        # wrong width. Defer cache invalidation so the next frame renders at correct size.
         runs_table.set_class(not is_unscheduled, "-scheduled")
+        self.call_after_refresh(runs_table._clear_caches)
 
     def _load_more_runs(self) -> None:
         selected = self._current_schedule

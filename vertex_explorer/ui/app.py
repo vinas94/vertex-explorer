@@ -24,6 +24,7 @@ class _Footer(Footer):
 
 
 class VertexExplorer(App):
+    ALLOW_SELECT = False
     BINDINGS = [
         Binding("R", "refresh", "Refresh"),
         Binding("o", "open", "Open"),
