@@ -195,6 +195,7 @@ class OverviewTab(Vertical):
         self._loading_runs = False
         self._update_dots()
         self._repopulate_runs()
+        self._update_status()
 
     def _update_dots(self) -> None:
         table = self.query_one("#schedules-table", _DataTable)
