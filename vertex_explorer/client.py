@@ -89,7 +89,7 @@ def fetch_all(on_schedules=None, on_runs=None, on_error=None) -> dict:
             if len(runs) == len(config.LOCATIONS) and on_runs:
                 on_runs(dict(runs))
 
-    with ThreadPoolExecutor(max_workers=len(config.LOCATIONS) * 2 - 1) as executor:
+    with ThreadPoolExecutor(max_workers=max(1, len(config.LOCATIONS) * 2 - 1)) as executor:
         for loc in config.LOCATIONS:
             fs = executor.submit(fetch_location_schedules, loc, sched_filter)
             fr = executor.submit(fetch_location_runs, loc, runs_filter)

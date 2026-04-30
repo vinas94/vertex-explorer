@@ -126,7 +126,7 @@ class SettingsScreen(ModalScreen[bool]):
                 return fallback
 
         def _list(id: str) -> list[str]:
-            return [v.strip() for v in self.query_one(id, Input).value.split(",") if v.strip()]
+            return list(dict.fromkeys([v.strip() for v in self.query_one(id, Input).value.split(",") if v.strip()]))
 
         new_runs_days = _int("#s-runs-days", config.RUNS_DAYS)
         new_schedules_days = _int("#s-schedules-days", config.SCHEDULES_DAYS)

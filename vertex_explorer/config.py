@@ -35,7 +35,7 @@ def load_settings() -> None:
     except Exception:
         return
     PROJECT = data.get("PROJECT", PROJECT)
-    LOCATIONS = data.get("LOCATIONS", LOCATIONS)
+    LOCATIONS = list(dict.fromkeys(data.get("LOCATIONS", LOCATIONS)))
     RUNS_DAYS = data.get("RUNS_DAYS", RUNS_DAYS)
     SCHEDULES_DAYS = data.get("SCHEDULES_DAYS", SCHEDULES_DAYS)
 
