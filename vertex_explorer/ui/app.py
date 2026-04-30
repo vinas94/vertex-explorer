@@ -270,6 +270,11 @@ class VertexExplorer(App):
                 "toggle_active": tab.active,
                 "focus_filter": bool(tab.filter),
             }
+        elif self.tab == "tracker":
+            tab = self.query_one(TrackerTab)
+            toggled = {
+                "toggle_region": tab.region_ is not None,
+            }
         for key in self.query(FooterKey):
             key.set_class(toggled.get(key.action, False), "-toggled")
 

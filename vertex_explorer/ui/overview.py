@@ -51,8 +51,6 @@ class OverviewTab(Vertical):
         self._run_cursors: dict[str, str] = {}
         self._run_offsets: dict[str, int] = {}
         self._current_schedule: str | None = None
-        self._total_schedules: int = 0
-        self._visible_schedules: int = 0
         self._st_prev_col = None
 
     # ── layout ────────────────────────────────────────────────────────────────
@@ -161,10 +159,9 @@ class OverviewTab(Vertical):
     # ── rendering ─────────────────────────────────────────────────────────────
 
     def repopulate_schedules(self) -> None:
-        schedules = self.app.schedules
         runs_by_schedule = self.app.runs_by_schedule
         table = self.query_one("#schedules-table", _DataTable)
-        predicate, filter_terms = parse_filter(self.filter)
+        _, filter_terms = parse_filter(self.filter)
 
         try:
             saved_key = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
@@ -188,19 +185,12 @@ class OverviewTab(Vertical):
                 s.get("nextRunTime") or pendulum.DateTime.min,
             )
 
-        count = 0
-        for sched in sorted(schedules, key=_sort_key, reverse=True):
+        synthetic_scheds = [s for s in self.app.schedules if s.get("_synthetic")]
+        for sched in sorted(self._filtered_schedules + synthetic_scheds, key=_sort_key, reverse=True):
             name = sched["name"]
             state = sched.get("state", "")
             display_name = sched.get("display_name", "")
             synthetic = sched.get("_synthetic")
-
-            if self.active and state != "ACTIVE" and not synthetic:
-                continue
-            if self.region_ and name.split("/")[3] != self.region_:
-                continue
-            if predicate and not predicate(display_name):
-                continue
 
             if synthetic:
                 name_cell = Text(display_name, style="italic dim")
@@ -219,17 +209,12 @@ class OverviewTab(Vertical):
                 key=name,
             )
 
-            if not synthetic:
-                count += 1
-
         if saved_key:
             for idx, row_key in enumerate(table.rows):
                 if row_key.value == saved_key:
                     table.move_cursor(row=idx)
                     break
 
-        self._total_schedules = sum(1 for s in schedules if not s.get("_synthetic"))
-        self._visible_schedules = count
         self.app.refresh_status(right=self.app.last_refresh.strftime("%H:%M:%S") if self.app.last_refresh else "")
 
     def repopulate_runs(self) -> None:
@@ -305,6 +290,22 @@ class OverviewTab(Vertical):
 
     @property
     def notification(self) -> str:
-        if self._visible_schedules != self._total_schedules:
-            return f"{self._visible_schedules}/{self._total_schedules} schedules"
-        return f"{self._total_schedules} schedules"
+        total = sum(1 for s in self.app.schedules if not s.get("_synthetic"))
+        visible = len(self._filtered_schedules)
+        if not total:
+            return ""
+        if visible != total:
+            return f"{visible}/{total} schedules"
+        return f"{total} schedules"
+
+    @property
+    def _filtered_schedules(self) -> list:
+        predicate, _ = parse_filter(self.filter)
+        return [
+            schedules
+            for schedules in self.app.schedules
+            if not schedules.get("_synthetic")
+            and (not self.active or schedules.get("state") == "ACTIVE")
+            and (not self.region_ or schedules["name"].split("/")[3] == self.region_)
+            and (not predicate or predicate(schedules.get("display_name", "")))
+        ]

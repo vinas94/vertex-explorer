@@ -3,7 +3,9 @@ import webbrowser
 import pendulum
 from rich.text import Text
 from textual import events
+from textual.binding import Binding
 from textual.containers import Vertical
+from textual.reactive import reactive
 from textual.widgets import DataTable
 
 import vertex_explorer.config as config
@@ -24,6 +26,12 @@ class _DataTable(DataTable):
 
 
 class TrackerTab(Vertical):
+    BINDINGS = [
+        Binding("r", "toggle_region", "Region"),
+    ]
+
+    region_: reactive[str | None] = reactive(None)
+
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self._offset: int = 0
@@ -43,6 +51,12 @@ class TrackerTab(Vertical):
 
     # ── actions ───────────────────────────────────────────────────────────────
 
+    def action_toggle_region(self) -> None:
+        cycle = dict(zip([None, *config.LOCATIONS], [*config.LOCATIONS, None]))
+        self.region_ = cycle[self.region_]
+        self.repopulate()
+        self.app.update_binding_highlights()
+
     def action_open_current(self) -> None:
         t = self.query_one("#tracker-table", _DataTable)
         try:
@@ -59,12 +73,14 @@ class TrackerTab(Vertical):
         t = self.query_one("#tracker-table", _DataTable)
         t.clear(columns=True)
         t.add_columns("Region", "Status", "Start", "End", "Duration", "Name")
-        runs = self.app.runs
+        runs = self._filtered_runs
         self._append_rows(t, runs[: config.RUNS_PAGE_SIZE])
         self._offset = config.RUNS_PAGE_SIZE
+        self.app.refresh_status()
 
     def reset(self) -> None:
         self._offset = 0
+        self.region_ = None
         self.query_one("#tracker-table", _DataTable).clear(columns=True)
 
     # ── rendering ─────────────────────────────────────────────────────────────
@@ -75,7 +91,7 @@ class TrackerTab(Vertical):
             self._load_more()
 
     def _load_more(self) -> None:
-        runs = self.app.runs
+        runs = self._filtered_runs
         batch = runs[self._offset : self._offset + config.RUNS_PAGE_SIZE]
         if not batch:
             return
@@ -97,3 +113,19 @@ class TrackerTab(Vertical):
             duration = Text(_fmt_duration(run.start_time, run.end_time))
             name = Text(_fmt_name(run.name))
             table.add_row(region, state, start, end, duration, name, key=run.name)
+
+    @property
+    def notification(self) -> str:
+        total = len(self.app.runs)
+        visible = len(self._filtered_runs)
+        if not total:
+            return ""
+        if visible != total:
+            return f"{visible}/{total} runs"
+        return f"{total} runs"
+
+    @property
+    def _filtered_runs(self) -> list:
+        if not self.region_:
+            return self.app.runs
+        return [r for r in self.app.runs if r.name and r.name.split("/")[3] == self.region_]
