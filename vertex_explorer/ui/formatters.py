@@ -23,7 +23,9 @@ def _run_dots(runs: list) -> Text:
 
 def _fmt_region(resource_name: str) -> str:
     _, project, _, region, _, resource_id = resource_name.split("/")
-    return region.replace("europe-", "")
+    if config.X:
+        return region.split("-", maxsplit=1)[1]
+    return region
 
 
 def _fmt_name(resource_name: str) -> str:
