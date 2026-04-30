@@ -54,7 +54,7 @@ def fetch_location_schedules(location: str, filter_str: str) -> list:
     return schedules
 
 
-def fetch_all(on_schedules=None, on_runs=None) -> dict:
+def fetch_all(on_schedules=None, on_runs=None, on_error=None) -> dict:
     runs_filter = f'createTime>="{pendulum.now("UTC").subtract(days=RUNS_DAYS).to_iso8601_string()}"'
     schedules_filter = f'nextRunTime>="{pendulum.now("UTC").subtract(days=SCHEDULES_DAYS).to_iso8601_string()}"'
 
@@ -68,7 +68,9 @@ def fetch_all(on_schedules=None, on_runs=None) -> dict:
             data = future.result()
         except Exception as e:
             log.error(f"{loc}: failed to fetch schedules: {e}")
-            raise
+            if on_error:
+                on_error(e)
+            return
         with lock_sched:
             schedules[loc] = data
             if len(schedules) == len(LOCATIONS) and on_schedules:
@@ -79,7 +81,9 @@ def fetch_all(on_schedules=None, on_runs=None) -> dict:
             data = future.result()
         except Exception as e:
             log.error(f"{loc}: failed to fetch runs: {e}")
-            raise
+            if on_error:
+                on_error(e)
+            return
         with lock_runs:
             runs[loc] = data
             if len(runs) == len(LOCATIONS) and on_runs:
