@@ -160,9 +160,14 @@ class VertexExplorer(App):
                 pass
 
         overview = self.query_one(OverviewTab)
+
+        if not self._check_auth():
+            _call(self.set_notification, "[red]Authentication error[/]")
+            return
+
         try:
             # Trigger heavy imports
-            import google.cloud.aiplatform_v1  # noqa
+            import google.cloud.aiplatform_v1  # noqa: F401
 
             _call(self.set_notification, "Fetching schedules...")
 
@@ -177,12 +182,28 @@ class VertexExplorer(App):
                 _call(overview._on_runs_ready, r)
 
             fetch_all(on_schedules=on_schedules, on_runs=on_runs)
-        except Exception as e:
+        except Exception:
             self._loading_schedules = False
             self._loading_runs = False
-            _call(self.set_notification, f"[red]Error:[/] {str(e)[:60]}")
+            _call(self.set_notification, "[red]Error during fetching[/]")
 
     # ── helpers ───────────────────────────────────────────────────────────────
+
+    def _check_auth(self) -> bool:
+        import google.auth
+        import google.auth.exceptions
+        import google.auth.transport.requests
+
+        try:
+            credentials, _ = google.auth.default()
+            credentials.refresh(google.auth.transport.requests.Request())
+            return True
+        except (
+            google.auth.exceptions.DefaultCredentialsError,
+            google.auth.exceptions.RefreshError,
+            google.auth.exceptions.TransportError,
+        ):
+            return False
 
     @property
     def _active_tab(self) -> OverviewTab | TrackerTab:
