@@ -11,7 +11,6 @@ from textual.widgets import DataTable, Input
 
 import vertex_explorer.config as config
 from vertex_explorer.filters import parse_filter
-from vertex_explorer.processor import build_runs_index, build_schedules
 from vertex_explorer.ui.formatters import (
     _console_url,
     _fmt_duration,
@@ -50,9 +49,6 @@ class OverviewTab(Vertical):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._last_refresh: datetime | None = None
-        self._schedules: list[dict] = []
-        self._runs_by_schedule: dict[str, list] = {}
         self._run_cursors: dict[str, str] = {}
         self._run_offsets: dict[str, int] = {}
         self._current_schedule: str | None = None
@@ -85,18 +81,18 @@ class OverviewTab(Vertical):
         self.query_one("#filter-input", _FilterInput).focus()
 
     def watch_filter(self) -> None:
-        self._repopulate_schedules()
+        self.repopulate_schedules()
         self.app.update_binding_highlights()
 
     def action_toggle_region(self) -> None:
         cycle = dict(zip([None, *config.LOCATIONS], [*config.LOCATIONS, None]))
         self.region_ = cycle[self.region_]
-        self._repopulate_schedules()
+        self.repopulate_schedules()
         self.app.update_binding_highlights()
 
     def action_toggle_active(self) -> None:
         self.active = not self.active
-        self._repopulate_schedules()
+        self.repopulate_schedules()
         self.app.update_binding_highlights()
 
     def action_open_current(self) -> None:
@@ -130,12 +126,10 @@ class OverviewTab(Vertical):
             self.focus_default()
 
     def repopulate(self) -> None:
-        self._repopulate_schedules()
-        self._repopulate_runs()
+        self.repopulate_schedules()
+        self.repopulate_runs()
 
     def reset(self) -> None:
-        self._schedules = []
-        self._runs_by_schedule = {}
         self._current_schedule = None
         self.query_one("#schedules-table", _DataTable).clear(columns=True)
         self.query_one("#runs-table", _DataTable).clear(columns=True)
@@ -153,7 +147,7 @@ class OverviewTab(Vertical):
     @on(DataTable.RowHighlighted, "#schedules-table")
     def _on_schedule_highlighted(self, event: DataTable.RowHighlighted) -> None:
         if event.row_key.value != self._current_schedule:
-            self._repopulate_runs()
+            self.repopulate_runs()
 
     @on(DataTable.RowHighlighted, "#runs-table")
     def _on_run_highlighted(self, event: DataTable.RowHighlighted) -> None:
@@ -165,29 +159,11 @@ class OverviewTab(Vertical):
         if self._current_schedule and 0 < table.max_scroll_y <= scroll_y:
             self._load_more_runs()
 
-    # ── data loading ──────────────────────────────────────────────────────────
-
-    def on_schedules_ready(self, schedules_by_loc: dict) -> None:
-        self._schedules = build_schedules(schedules_by_loc)
-        self._total_schedules = sum(1 for s in self._schedules if not s.get("_synthetic"))
-        self._last_refresh = datetime.now()
-        self._repopulate_schedules()
-
-    def on_runs_ready(self, runs_by_loc: dict) -> None:
-        all_runs = [r for rl in runs_by_loc.values() for r in rl]
-        self._runs_by_schedule = build_runs_index(all_runs)
-        self._update_dots()
-        self._repopulate_runs()
-
-    def _update_dots(self) -> None:
-        table = self.query_one("#schedules-table", _DataTable)
-        for row_key in table.rows:
-            dots = _run_dots(self._runs_by_schedule.get(row_key.value, []))
-            table.update_cell(row_key, self._st_prev_col, dots)
-
     # ── rendering ─────────────────────────────────────────────────────────────
 
-    def _repopulate_schedules(self) -> None:
+    def repopulate_schedules(self) -> None:
+        schedules = self.app.schedules
+        runs_by_schedule = self.app.runs_by_schedule
         table = self.query_one("#schedules-table", _DataTable)
         predicate, filter_terms = parse_filter(self.filter)
 
@@ -201,7 +177,7 @@ class OverviewTab(Vertical):
         table.add_column("Status")
         table.add_column("Cron")
         table.add_column("Next Run")
-        self._st_prev_col = table.add_column("Prev", width=7)
+        self._st_prev_col = table.add_column("Prev", width=5)
         table.add_column("Name")
 
         region_rank = {loc: len(config.LOCATIONS) - i - 1 for i, loc in enumerate(config.LOCATIONS)}
@@ -214,7 +190,7 @@ class OverviewTab(Vertical):
             )
 
         count = 0
-        for sched in sorted(self._schedules, key=_sort_key, reverse=True):
+        for sched in sorted(schedules, key=_sort_key, reverse=True):
             name = sched["name"]
             state = sched.get("state", "")
             display_name = sched.get("display_name", "")
@@ -237,9 +213,9 @@ class OverviewTab(Vertical):
             table.add_row(
                 _fmt_region(name),
                 Text(state, style="green" if state == "ACTIVE" else "dim" if not synthetic else ""),
-                sched.get("cron") or "",
+                sched.get("cron", ""),
                 _fmt_time(sched.get("nextRunTime")),
-                _run_dots(self._runs_by_schedule.get(name, [])),
+                _run_dots(runs_by_schedule.get(name, [])),
                 name_cell,
                 key=name,
             )
@@ -253,13 +229,12 @@ class OverviewTab(Vertical):
                     table.move_cursor(row=idx)
                     break
 
+        self._total_schedules = sum(1 for s in schedules if not s.get("_synthetic"))
         self._visible_schedules = count
-        self.app.refresh_status(right=self._last_refresh.strftime("%H:%M:%S") if self._last_refresh else "")
+        self.app.refresh_status(right=self.app.last_refresh.strftime("%H:%M:%S") if self.app.last_refresh else "")
 
-    def _repopulate_runs(self) -> None:
+    def repopulate_runs(self) -> None:
         selected_schedule = self._selected_schedule
-        if not selected_schedule or self.app.loading_runs:
-            return
 
         runs_table = self.query_one("#runs-table", _DataTable)
 
@@ -279,7 +254,7 @@ class OverviewTab(Vertical):
         if is_unscheduled:
             runs_table.add_column("Name")
 
-        all_runs = self._runs_by_schedule.get(selected_schedule, [])
+        all_runs = self.app.runs_by_schedule.get(selected_schedule, [])
         self._append_run_rows(runs_table, all_runs[: config.RUNS_PAGE_SIZE], is_unscheduled)
         self._run_offsets[selected_schedule] = config.RUNS_PAGE_SIZE
 
@@ -292,7 +267,7 @@ class OverviewTab(Vertical):
 
     def _load_more_runs(self) -> None:
         selected = self._current_schedule
-        all_runs = self._runs_by_schedule.get(selected, [])
+        all_runs = self.app.runs_by_schedule.get(selected, [])
         offset = self._run_offsets.get(selected, 0)
         batch = all_runs[offset : offset + config.RUNS_PAGE_SIZE]
         if not batch:
@@ -301,6 +276,12 @@ class OverviewTab(Vertical):
         table = self.query_one("#runs-table", _DataTable)
         self._append_run_rows(table, batch, is_unscheduled)
         self._run_offsets[selected] = offset + len(batch)
+
+    def update_dots(self) -> None:
+        table = self.query_one("#schedules-table", _DataTable)
+        for row_key in table.rows:
+            dots = _run_dots(self.app.runs_by_schedule.get(row_key.value, []))
+            table.update_cell(row_key, self._st_prev_col, dots)
 
     @staticmethod
     def _append_run_rows(table: _DataTable, runs: list, is_unscheduled: bool) -> None:
