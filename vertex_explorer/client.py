@@ -10,18 +10,18 @@ log = logging.getLogger(__name__)
 
 
 def fetch_location_runs(location: str, filter_str: str) -> list:
-    from google.cloud import aiplatform_v1
-    from google.protobuf import field_mask_pb2
+    from google.cloud import aiplatform_v1  # noqa
+    from google.protobuf import field_mask_pb2  # noqa
 
-    RUN_READ_MASK = field_mask_pb2.FieldMask(paths=["name", "start_time", "end_time", "state", "schedule_name"])
+    _RUN_READ_MASK = field_mask_pb2.FieldMask(paths=["name", "start_time", "end_time", "state", "schedule_name"])
 
     client = aiplatform_v1.PipelineServiceClient(
         client_options={"api_endpoint": f"{location}-aiplatform.googleapis.com"}
     )
     request = aiplatform_v1.ListPipelineJobsRequest(
-        parent=f"projects/{config.PROJECT}/locations/{location}",
-        filter=filter_str,
-        read_mask=RUN_READ_MASK,
+        parent=f"projects/{config.PROJECT}/locations/{location}",  # noqa
+        filter=filter_str,  # noqa
+        read_mask=_RUN_READ_MASK,  # noqa
     )
     log.info(f"{location}: start fetching runs")
     runs = list(client.list_pipeline_jobs(request))
@@ -36,8 +36,8 @@ def fetch_location_schedules(location: str, filter_str: str) -> list:
         client_options={"api_endpoint": f"{location}-aiplatform.googleapis.com"}
     )
     request = aiplatform_v1.ListSchedulesRequest(
-        parent=f"projects/{config.PROJECT}/locations/{location}",
-        filter=filter_str,
+        parent=f"projects/{config.PROJECT}/locations/{location}",  # noqa
+        filter=filter_str,  # noqa
     )
     log.info(f"{location}: start fetching schedules")
     schedules = [

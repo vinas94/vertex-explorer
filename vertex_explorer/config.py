@@ -30,10 +30,12 @@ RUN_STATE_STYLE = {
 
 def load_settings() -> None:
     global PROJECT, LOCATIONS, RUNS_DAYS, SCHEDULES_DAYS
+
     try:
         data = json.loads(_SETTINGS_PATH.read_text())
     except Exception:
         return
+
     PROJECT = data.get("PROJECT", PROJECT)
     LOCATIONS = list(dict.fromkeys(data.get("LOCATIONS", LOCATIONS)))
     RUNS_DAYS = data.get("RUNS_DAYS", RUNS_DAYS)

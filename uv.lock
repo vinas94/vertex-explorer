@@ -1180,6 +1180,7 @@ dependencies = [
     { name = "httpx" },
     { name = "ipython" },
     { name = "pendulum" },
+    { name = "rich" },
     { name = "ruff" },
     { name = "textual" },
 ]
@@ -1192,6 +1193,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.0" },
     { name = "ipython", specifier = ">=9.13.0" },
     { name = "pendulum", specifier = ">=3.2.0" },
+    { name = "rich", specifier = ">=15.0.0" },
     { name = "ruff", specifier = ">=0.15.12" },
     { name = "textual", specifier = ">=8.2.4" },
 ]

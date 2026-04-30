@@ -9,6 +9,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Footer, Input, Label
 from textual.widgets._footer import FooterKey
 
+import vertex_explorer.config as config
 from vertex_explorer.client import fetch_all
 from vertex_explorer.ui.overview import OverviewTab
 from vertex_explorer.ui.settings import SettingsScreen
@@ -17,12 +18,8 @@ from vertex_explorer.ui.tracker import TrackerTab
 
 class _Footer(Footer):
     async def recompose(self) -> None:
-        pressed = {k.action for k in self.query(FooterKey) if "-pressed" in k.classes}
         await super().recompose()
         self.app._update_binding_highlights()
-        for key in self.query(FooterKey):
-            if key.action in pressed:
-                key.add_class("-pressed")
 
 
 class VertexExplorer(App):
@@ -64,6 +61,10 @@ class VertexExplorer(App):
         yield _Footer()
 
     def on_mount(self) -> None:
+        if not config.PROJECT:
+            self.set_notification("[yellow]Configure Project in settings[/]")
+            return
+
         self.set_notification("Initialising...")
         self.fetch_data()
 
@@ -121,6 +122,7 @@ class VertexExplorer(App):
     def action_escape(self) -> None:
         if isinstance(self.screen, ModalScreen):
             if isinstance(self.focused, Input):
+                self.focused.value = getattr(self.focused, "_original_value", self.focused.value)
                 self.screen.set_focus(None)
             else:
                 self.screen.dismiss(False)
@@ -174,7 +176,7 @@ class VertexExplorer(App):
             _call(self.set_notification, "[red]Fetching failed[/]")
 
         try:
-            import google.cloud.aiplatform_v1  # noqa: F401
+            import google.cloud.aiplatform_v1  # noqa
 
             _call(self.set_notification, "Fetching schedules...")
 

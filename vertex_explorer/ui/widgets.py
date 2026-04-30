@@ -1,5 +1,4 @@
 from textual.widgets import Input
-from textual.widgets._input import Selection
 
 
 class ClickableInput(Input):
@@ -22,4 +21,4 @@ class ClickableInput(Input):
         while end < len(v) and is_word(v[end]):
             end += 1
         if start < end:
-            self.selection = Selection(start, end)
+            self.selection = start, end

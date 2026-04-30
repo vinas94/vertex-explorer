@@ -28,11 +28,15 @@ def _current_value(id_: str) -> str:
 
 class _NavInput(ClickableInput):
     can_focus = False
+    _original_value: str = ""
+
+    def _on_focus(self, event) -> None:
+        self._original_value = self.value
 
     async def _on_click(self, event) -> None:
         self.can_focus = True
         self.focus()
-        self.screen.cursor = _GRID_POS[self.id]  # type: ignore
+        self.screen.cursor = _GRID_POS[self.id]  # noqa
         await super()._on_click(event)
 
     def on_blur(self) -> None:
@@ -116,17 +120,17 @@ class SettingsScreen(ModalScreen[bool]):
                 self.query_one(f"#{id_}").set_class(r == row and c == col, "-cursor")
 
     def _save(self) -> bool:
-        def _str(id: str) -> str:
-            return self.query_one(id, Input).value.strip()
+        def _str(idx: str) -> str:
+            return self.query_one(idx, Input).value.strip()
 
-        def _int(id: str, fallback: int) -> int:
+        def _int(idx: str, fallback: int) -> int:
             try:
-                return int(self.query_one(id, Input).value.strip())
+                return int(self.query_one(idx, Input).value.strip())
             except ValueError:
                 return fallback
 
-        def _list(id: str) -> list[str]:
-            return list(dict.fromkeys([v.strip() for v in self.query_one(id, Input).value.split(",") if v.strip()]))
+        def _list(idx: str) -> list[str]:
+            return list(dict.fromkeys([v.strip() for v in self.query_one(idx, Input).value.split(",") if v.strip()]))
 
         new_runs_days = _int("#s-runs-days", config.RUNS_DAYS)
         new_schedules_days = _int("#s-schedules-days", config.SCHEDULES_DAYS)

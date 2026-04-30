@@ -93,7 +93,4 @@ def parse_filter(text: str) -> tuple:
     text = text.strip()
     if not text:
         return None, []
-    try:
-        return _Parser(_lex(text)).parse()
-    except Exception:
-        return None, []
+    return _Parser(_lex(text)).parse()

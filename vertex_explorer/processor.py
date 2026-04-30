@@ -27,12 +27,12 @@ def build_schedules(schedules_by_loc: dict) -> list[dict]:
 
 def build_runs_index(all_runs: list) -> dict[str, list]:
     by_sched: dict[str, list] = {}
-    for r in all_runs:
-        if r.schedule_name:
-            by_sched.setdefault(r.schedule_name, []).append(r)
+    for run in all_runs:
+        if run.schedule_name:
+            by_sched.setdefault(run.schedule_name, []).append(run)
         else:
-            location = r.name.split("/")[3] if r.name else "unknown"
-            by_sched.setdefault(synthetic_name(location), []).append(r)
+            location = run.name.split("/")[3] if run.name else "unknown"
+            by_sched.setdefault(synthetic_name(location), []).append(run)
 
     _key = lambda r: r.start_time or datetime.min.replace(tzinfo=timezone.utc)
     for runs in by_sched.values():
