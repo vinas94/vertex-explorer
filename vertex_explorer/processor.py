@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+import pendulum
 
 from vertex_explorer.config import PROJECT
 
@@ -34,7 +34,7 @@ def build_runs_index(all_runs: list) -> dict[str, list]:
             location = run.name.split("/")[3] if run.name else "unknown"
             by_sched.setdefault(synthetic_name(location), []).append(run)
 
-    _key = lambda r: r.start_time or datetime.min.replace(tzinfo=timezone.utc)
+    _key = lambda r: r.start_time or pendulum.DateTime.min
     for runs in by_sched.values():
         runs.sort(key=_key, reverse=True)
     return by_sched

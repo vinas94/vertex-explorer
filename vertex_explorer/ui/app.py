@@ -1,6 +1,6 @@
 import os
-from datetime import datetime, timezone
 
+import pendulum
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -51,7 +51,7 @@ class VertexExplorer(App):
 
     loading_schedules: bool = False
     loading_runs: bool = False
-    last_refresh: datetime | None = None
+    last_refresh: pendulum.DateTime | None = None
 
     _auth_granted: bool = False
     _persistent_pressed: set[str] = set()
@@ -171,7 +171,7 @@ class VertexExplorer(App):
             return
         self.loading_schedules = True
         self.loading_runs = True
-        self.last_refresh = datetime.now()
+        self.last_refresh = pendulum.now()
         self._fetch_worker()
 
     def on_schedules_ready(self, schedules_by_loc: dict) -> None:
@@ -187,7 +187,7 @@ class VertexExplorer(App):
         self.runs_by_schedule = build_runs_index(all_runs)
         self.runs = sorted(
             all_runs,
-            key=lambda r: r.start_time or datetime.min.replace(tzinfo=timezone.utc),
+            key=lambda r: r.start_time or pendulum.DateTime.min,
             reverse=True,
         )
         self.set_notification("")

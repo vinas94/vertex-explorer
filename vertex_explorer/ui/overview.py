@@ -1,5 +1,4 @@
 import webbrowser
-from datetime import datetime, timezone
 
 import pendulum
 from rich.text import Text
@@ -186,7 +185,7 @@ class OverviewTab(Vertical):
             return (
                 1 if s.get("_synthetic") else 0,
                 region_rank.get(s["name"].split("/")[3], -1),
-                s.get("nextRunTime") or datetime.min.replace(tzinfo=timezone.utc),
+                s.get("nextRunTime") or pendulum.DateTime.min,
             )
 
         count = 0
