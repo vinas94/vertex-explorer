@@ -17,15 +17,6 @@ SCHEDULES_DAYS = 7
 
 RUNS_PAGE_SIZE = 100
 
-UA_LOOKBACK_DAYS = 7
-UA_PREFIXES = [
-    "go-model-treebased-install-prediction",
-    "tensorflow-install-prediction",
-    "tensorflow-action-prediction",
-    "tensorflow-audience-similarity",
-    "tensorflow-win-price-prediction",
-]
-
 RUN_STATE_STYLE = {
     "PIPELINE_STATE_SUCCEEDED": "green",
     "PIPELINE_STATE_RUNNING": "cyan",

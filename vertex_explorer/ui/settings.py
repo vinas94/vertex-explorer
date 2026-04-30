@@ -10,7 +10,6 @@ from vertex_explorer.ui.widgets import ClickableInput
 _GRID = [
     [("Runs Days", "s-runs-days"), ("Project", "s-project")],
     [("Schedules Days", "s-schedules-days"), ("Locations", "s-locations")],
-    [("Runs Page Size", "s-runs-page-size"), ("UA Prefixes", "s-ua-prefixes")],
 ]
 
 _GRID_POS = {id_: (r, c) for r, pair in enumerate(_GRID) for c, (_, id_) in enumerate(pair)}
@@ -23,8 +22,6 @@ def _current_value(id_: str) -> str:
         "s-project": config.PROJECT,
         "s-schedules-days": str(config.SCHEDULES_DAYS),
         "s-locations": ", ".join(config.LOCATIONS),
-        "s-runs-page-size": str(config.RUNS_PAGE_SIZE),
-        "s-ua-prefixes": ", ".join(config.UA_PREFIXES),
     }[id_]
 
 
@@ -71,8 +68,8 @@ class SettingsScreen(ModalScreen[bool]):
             return
         if event.key in ("ctrl+j", "shift+enter"):
             self.set_focus(None)
-            needs_refresh, any_changed = self._save()
-            if any_changed:
+            needs_refresh = self._save()
+            if needs_refresh:
                 self.app.notify("Settings updated")
             self.dismiss(needs_refresh)
             event.stop()
@@ -117,7 +114,7 @@ class SettingsScreen(ModalScreen[bool]):
             for c, (_, id_) in enumerate(pair):
                 self.query_one(f"#{id_}").set_class(r == row and c == col, "-cursor")
 
-    def _save(self) -> tuple[bool, bool]:
+    def _save(self) -> bool:
         def _str(id: str) -> str:
             return self.query_one(id, Input).value.strip()
 
@@ -132,11 +129,8 @@ class SettingsScreen(ModalScreen[bool]):
 
         new_runs_days = _int("#s-runs-days", config.RUNS_DAYS)
         new_schedules_days = _int("#s-schedules-days", config.SCHEDULES_DAYS)
-        new_runs_page_size = _int("#s-runs-page-size", config.RUNS_PAGE_SIZE)
-
         new_project = _str("#s-project")
         new_locations = _list("#s-locations")
-        new_ua_prefixes = _list("#s-ua-prefixes")
 
         needs_refresh = (
             new_project != config.PROJECT
@@ -144,15 +138,10 @@ class SettingsScreen(ModalScreen[bool]):
             or new_runs_days != config.RUNS_DAYS
             or new_schedules_days != config.SCHEDULES_DAYS
         )
-        any_changed = (
-            needs_refresh or new_runs_page_size != config.RUNS_PAGE_SIZE or new_ua_prefixes != config.UA_PREFIXES
-        )
 
         config.PROJECT = new_project
         config.LOCATIONS = new_locations
         config.RUNS_DAYS = new_runs_days
         config.SCHEDULES_DAYS = new_schedules_days
-        config.RUNS_PAGE_SIZE = new_runs_page_size
-        config.UA_PREFIXES = new_ua_prefixes
 
-        return needs_refresh, any_changed
+        return needs_refresh
