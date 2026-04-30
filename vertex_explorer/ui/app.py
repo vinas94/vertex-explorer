@@ -35,7 +35,7 @@ class VertexExplorer(App):
     CSS_PATH = "styles.tcss"
 
     TABS = ["overview", "tracker"]
-    tab: reactive[str] = reactive("overview", init=False)
+    tab: reactive[str] = reactive("overview")
 
     # ── layout ────────────────────────────────────────────────────────────────
 
@@ -144,7 +144,7 @@ class VertexExplorer(App):
         if self.tab == "overview":
             tab = self.query_one(OverviewTab)
             toggled = {
-                "toggle_region": tab.region is not None,
+                "toggle_region": tab.region_ is not None,
                 "toggle_active": tab.active,
                 "focus_filter": bool(tab.filter),
             }

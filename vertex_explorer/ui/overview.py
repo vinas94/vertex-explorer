@@ -34,7 +34,7 @@ class OverviewTab(Vertical):
     ]
 
     active: reactive[bool] = reactive(False)
-    region: reactive[str | None] = reactive(None)
+    region_: reactive[str | None] = reactive(None)
     filter: reactive[str] = reactive("")
 
     def __init__(self, **kwargs) -> None:
@@ -122,7 +122,7 @@ class OverviewTab(Vertical):
 
     def action_toggle_region(self) -> None:
         cycle = dict(zip([None, *LOCATIONS], [*LOCATIONS, None]))
-        self.region = cycle[self.region]
+        self.region_ = cycle[self.region_]
         self._repopulate_schedules()
         self.app._update_binding_highlights()
 
@@ -232,7 +232,7 @@ class OverviewTab(Vertical):
 
             if self.active and state != "ACTIVE" and not sched.get("_synthetic"):
                 continue
-            if self.region and name.split("/")[3] != self.region:
+            if self.region_ and name.split("/")[3] != self.region_:
                 continue
             if predicate is not None and not predicate(display):
                 continue
