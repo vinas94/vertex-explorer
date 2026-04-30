@@ -46,7 +46,7 @@ class OverviewTab(Vertical):
 
     active: reactive[bool] = reactive(False)
     region_: reactive[str | None] = reactive(None)
-    filter: reactive[str] = reactive("")
+    filter: reactive[str] = reactive("", init=False)
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
