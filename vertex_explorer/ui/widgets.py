@@ -1,4 +1,28 @@
-from textual.widgets import Input
+from rich.text import Text
+from textual.reactive import reactive
+from textual.widgets import Input, Static
+
+
+class Tick(Static):
+    checked: reactive[bool] = reactive(False)
+
+    def __init__(self, value: bool = False, **kwargs) -> None:
+        super().__init__("[x]" if value else "[ ]", **kwargs)
+        self.checked = value
+
+    def watch_checked(self) -> None:
+        self.update(Text("[x]" if self.checked else "[ ]"))
+
+    @property
+    def value(self) -> bool:
+        return self.checked
+
+    def toggle(self) -> None:
+        self.checked = not self.checked
+
+    async def _on_click(self, event) -> None:
+        self.toggle()
+        event.stop()
 
 
 class ClickableInput(Input):
