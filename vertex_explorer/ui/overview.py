@@ -59,7 +59,6 @@ class OverviewTab(Vertical):
         self._total_schedules: int = 0
         self._visible_schedules: int = 0
         self._st_prev_col = None
-        self._rt_name_col = None
 
     # ── layout ────────────────────────────────────────────────────────────────
 
@@ -72,20 +71,9 @@ class OverviewTab(Vertical):
         )
 
     def on_mount(self) -> None:
-        st = self.query_one("#schedules-table", _DataTable)
-        st.add_column("Region")
-        st.add_column("Status")
-        st.add_column("Cron")
-        st.add_column("Next Run")
-        self._st_prev_col = st.add_column("Prev", width=7)
-        st.add_column("Name")
-        st.cursor_type = "row"
-
+        self.query_one("#schedules-table", _DataTable).cursor_type = "row"
         rt = self.query_one("#runs-table", _DataTable)
-        rt.add_columns("Status", "Start", "Duration")
-        self._rt_name_col = rt.add_column("Name")
         rt.cursor_type = "row"
-
         self.watch(rt, "scroll_y", self._on_runs_scroll_y)
 
     def focus_default(self) -> None:
@@ -149,12 +137,8 @@ class OverviewTab(Vertical):
         self._schedules = []
         self._runs_by_schedule = {}
         self._current_schedule = None
-
-        self.query_one("#schedules-table", _DataTable).clear()
-        rt = self.query_one("#runs-table", _DataTable)
-        rt.clear()
-        rt.remove_class("-scheduled")
-        self._rt_name_col = rt.add_column("Name")
+        self.query_one("#schedules-table", _DataTable).clear(columns=True)
+        self.query_one("#runs-table", _DataTable).clear(columns=True)
 
     # ── events ────────────────────────────────────────────────────────────────
 
@@ -212,8 +196,14 @@ class OverviewTab(Vertical):
         except Exception:
             saved_key = None
 
-        count = 0
-        table.clear()
+        table.clear(columns=True)
+        table.add_column("Region")
+        table.add_column("Status")
+        table.add_column("Cron")
+        table.add_column("Next Run")
+        self._st_prev_col = table.add_column("Prev", width=7)
+        table.add_column("Name")
+
         region_rank = {loc: len(config.LOCATIONS) - i - 1 for i, loc in enumerate(config.LOCATIONS)}
 
         def _sort_key(s):
@@ -223,6 +213,7 @@ class OverviewTab(Vertical):
                 s.get("nextRunTime") or datetime.min.replace(tzinfo=timezone.utc),
             )
 
+        count = 0
         for sched in sorted(self._schedules, key=_sort_key, reverse=True):
             name = sched["name"]
             state = sched.get("state", "")
@@ -267,6 +258,9 @@ class OverviewTab(Vertical):
 
     def _repopulate_runs(self) -> None:
         selected_schedule = self._selected_schedule
+        if not selected_schedule or self.app.loading_runs:
+            return
+
         runs_table = self.query_one("#runs-table", _DataTable)
 
         try:
@@ -280,12 +274,10 @@ class OverviewTab(Vertical):
         self._current_schedule = selected_schedule
 
         runs_table.set_class(not is_unscheduled, "-scheduled")
-        runs_table.clear()
-        if is_unscheduled and self._rt_name_col is None:
-            self._rt_name_col = runs_table.add_column("Name")
-        elif not is_unscheduled and self._rt_name_col is not None:
-            runs_table.remove_column(self._rt_name_col)
-            self._rt_name_col = None
+        runs_table.clear(columns=True)
+        runs_table.add_columns("Status", "Start", "Duration")
+        if is_unscheduled:
+            runs_table.add_column("Name")
 
         all_runs = self._runs_by_schedule.get(selected_schedule, [])
         self._append_run_rows(runs_table, all_runs[: config.RUNS_PAGE_SIZE], is_unscheduled)

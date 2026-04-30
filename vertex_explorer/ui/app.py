@@ -41,8 +41,8 @@ class VertexExplorer(App):
     tab: reactive[str] = reactive("overview")
 
     notification: str = ""
-    _loading_schedules: bool = False
-    _loading_runs: bool = False
+    loading_schedules: bool = False
+    loading_runs: bool = False
     _auth_granted: bool = False
     _persistent_pressed: set[str] = set()
 
@@ -82,7 +82,7 @@ class VertexExplorer(App):
 
     def action_refresh(self) -> None:
         self._flash_key("refresh")
-        if self._loading_schedules or self._loading_runs:
+        if self.loading_schedules or self.loading_runs:
             return
         self.query_one(OverviewTab).reset()
         self.query_one(TrackerTab).reset()
@@ -153,10 +153,10 @@ class VertexExplorer(App):
     # ── data loading ─────────────────────────────────────────────────────────
 
     def fetch_data(self) -> None:
-        if self._loading_schedules or self._loading_runs:
+        if self.loading_schedules or self.loading_runs:
             return
-        self._loading_schedules = True
-        self._loading_runs = True
+        self.loading_schedules = True
+        self.loading_runs = True
         self._fetch_worker()
 
     @work(thread=True)
@@ -171,13 +171,13 @@ class VertexExplorer(App):
             self._auth_granted = self._check_auth()
             if not self._auth_granted:
                 _call(self.set_notification, "[red]Authentication error[/]")
-                self._loading_schedules = False
-                self._loading_runs = False
+                self.loading_schedules = False
+                self.loading_runs = False
                 return
 
         def on_error():
-            self._loading_schedules = False
-            self._loading_runs = False
+            self.loading_schedules = False
+            self.loading_runs = False
             _call(self.set_notification, "[red]Fetching failed[/]")
 
         try:
@@ -189,13 +189,13 @@ class VertexExplorer(App):
             tracker = self.query_one(TrackerTab)
 
             def on_schedules(s):
-                self._loading_schedules = False
+                self.loading_schedules = False
                 _call(self.set_notification, "Fetching runs...")
                 _call(overview.on_schedules_ready, s)
                 _call(tracker.on_schedules_ready, s)
 
             def on_runs(r):
-                self._loading_runs = False
+                self.loading_runs = False
                 _call(self.set_notification, "")
                 _call(overview.on_runs_ready, r)
                 _call(tracker.on_runs_ready, r)
