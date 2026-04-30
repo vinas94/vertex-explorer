@@ -3,17 +3,18 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 
 import pendulum
-from google.cloud import aiplatform_v1
-from google.protobuf import field_mask_pb2
 
 from vertex_explorer.config import LOCATIONS, PROJECT, RUNS_DAYS, SCHEDULES_DAYS
 
 log = logging.getLogger(__name__)
 
-RUN_READ_MASK = field_mask_pb2.FieldMask(paths=["name", "start_time", "end_time", "state", "schedule_name"])
-
 
 def fetch_location_runs(location: str, filter_str: str) -> list:
+    from google.cloud import aiplatform_v1
+    from google.protobuf import field_mask_pb2
+
+    RUN_READ_MASK = field_mask_pb2.FieldMask(paths=["name", "start_time", "end_time", "state", "schedule_name"])
+
     client = aiplatform_v1.PipelineServiceClient(
         client_options={"api_endpoint": f"{location}-aiplatform.googleapis.com"}
     )
@@ -29,6 +30,8 @@ def fetch_location_runs(location: str, filter_str: str) -> list:
 
 
 def fetch_location_schedules(location: str, filter_str: str) -> list:
+    from google.cloud import aiplatform_v1
+
     client = aiplatform_v1.ScheduleServiceClient(
         client_options={"api_endpoint": f"{location}-aiplatform.googleapis.com"}
     )
