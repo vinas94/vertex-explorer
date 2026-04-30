@@ -207,43 +207,44 @@ class OverviewTab(Vertical):
 
     def _repopulate_schedules(self) -> None:
         table = self.query_one("#schedules-table", DataTable)
-        predicate, terms = parse_filter(self.filter)
+        predicate, filter_terms = parse_filter(self.filter)
 
         try:
             saved_key = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
         except Exception:
             saved_key = None
 
-        table.clear()
         count = 0
+        table.clear()
         region_rank = {loc: len(LOCATIONS) - i - 1 for i, loc in enumerate(LOCATIONS)}
-        for sched in sorted(
-            self._schedules,
-            key=lambda s: (
+
+        def _sort_key(s):
+            return (
                 1 if s.get("_synthetic") else 0,
                 region_rank.get(s["name"].split("/")[3], -1),
                 s.get("nextRunTime") or datetime.min.replace(tzinfo=timezone.utc),
-            ),
-            reverse=True,
-        ):
-            state = sched.get("state", "")
-            name = sched["name"]
-            display = sched.get("display_name", "")
+            )
 
-            if self.active and state != "ACTIVE" and not sched.get("_synthetic"):
+        for sched in sorted(self._schedules, key=_sort_key, reverse=True):
+            name = sched["name"]
+            state = sched.get("state", "")
+            display = sched.get("display_name", "")
+            synthetic = sched.get("_synthetic")
+
+            if self.active and state != "ACTIVE" and not synthetic:
                 continue
             if self.region_ and name.split("/")[3] != self.region_:
                 continue
-            if predicate is not None and not predicate(display):
+            if predicate and not predicate(display):
                 continue
 
-            name_cell = (
-                Text(display, style="italic dim")
-                if sched.get("_synthetic")
-                else _highlight(display, terms)
-                if terms
-                else display
-            )
+            if synthetic:
+                name_cell = Text(display, style="italic dim")
+            elif filter_terms:
+                name_cell = _highlight(display, filter_terms)
+            else:
+                name_cell = display
+
             table.add_row(
                 _fmt_region(name),
                 Text(state, style="green" if state == "ACTIVE" else "dim"),
@@ -253,7 +254,7 @@ class OverviewTab(Vertical):
                 name_cell,
                 key=name,
             )
-            if not sched.get("_synthetic"):
+            if not synthetic:
                 count += 1
 
         if saved_key:

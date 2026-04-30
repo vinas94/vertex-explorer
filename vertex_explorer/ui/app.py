@@ -57,6 +57,14 @@ class VertexExplorer(App):
 
     def on_mount(self) -> None:
         self.query_one(OverviewTab).focus_default()
+        # TODO: can this be run during refresh itself?
+        self.call_after_refresh(self.watch_tab)
+
+    def on_click(self, event) -> None:
+        if event.widget and event.widget.id == "tab-overview":
+            self.tab = "overview"
+        elif event.widget and event.widget.id == "tab-tracker":
+            self.tab = "tracker"
 
     # ── actions ───────────────────────────────────────────────────────────────
 
