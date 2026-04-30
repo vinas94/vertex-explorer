@@ -11,8 +11,8 @@ def synthetic_schedule(location: str) -> dict:
     return {
         "name": synthetic_name(location),
         "display_name": "Unscheduled runs",
-        "state": "-",
-        "cron": "-",
+        "state": "",
+        "cron": "",
         "nextRunTime": None,
         "_synthetic": True,
     }

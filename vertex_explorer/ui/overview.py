@@ -237,7 +237,7 @@ class OverviewTab(Vertical):
             table.add_row(
                 _fmt_region(name),
                 Text(state, style="green" if state == "ACTIVE" else "dim" if not synthetic else ""),
-                sched.get("cron", "-") or "-",
+                sched.get("cron") or "",
                 _fmt_time(sched.get("nextRunTime")),
                 _run_dots(self._runs_by_schedule.get(name, [])),
                 name_cell,

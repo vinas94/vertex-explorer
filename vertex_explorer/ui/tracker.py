@@ -37,7 +37,7 @@ class TrackerTab(Vertical):
 
     def on_mount(self) -> None:
         t = self.query_one("#tracker-table", _DataTable)
-        t.add_columns("Status", "Start", "Duration", "Schedule", "Region")
+        t.add_columns("Region", "Status", "Start", "End", "Duration", "Name")
         t.cursor_type = "row"
         self.watch(t, "scroll_y", self._on_scroll_y)
 
@@ -47,7 +47,7 @@ class TrackerTab(Vertical):
     def repopulate(self) -> None:
         t = self.query_one("#tracker-table", _DataTable)
         t.clear(columns=True)
-        t.add_columns("Status", "Start", "Duration", "Schedule", "Region")
+        t.add_columns("Region", "Status", "Start", "End", "Duration", "Name")
         self._append_rows(t, self._all_runs[:RUNS_PAGE_SIZE])
         self._offset = RUNS_PAGE_SIZE
 
@@ -106,14 +106,15 @@ class TrackerTab(Vertical):
             recent_fail = (
                 state_name == "PIPELINE_STATE_FAILED" and run.end_time and pendulum.instance(run.end_time) >= cutoff_24h
             )
+            region = _fmt_region(run.name) if run.name else ""
             start = Text(_fmt_time(run.start_time), style="red" if recent_fail else "")
+            end = Text(_fmt_time(run.end_time))
             duration = Text(_fmt_duration(run.start_time, run.end_time))
-            sched_display = self._schedule_name(run)
-            region = _fmt_region(run.name) if run.name else "-"
-            table.add_row(state, start, duration, sched_display, region, key=run.name)
+            name = self._schedule_name(run)
+            table.add_row(region, state, start, end, duration, name, key=run.name)
 
     def _schedule_name(self, run) -> str:
         if run.schedule_name and run.schedule_name in self._schedule_names:
             name = self._schedule_names[run.schedule_name]
             return name if name else _fmt_name(run.schedule_name)
-        return _fmt_name(run.name) if run.name else "-"
+        return _fmt_name(run.name) if run.name else ""

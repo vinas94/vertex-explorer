@@ -37,7 +37,7 @@ def _fmt_time(ts) -> str:
     try:
         return pendulum.instance(ts).format("MM-DD HH:mm")
     except Exception:
-        return "-"
+        return ""
 
 
 def _fmt_duration(start, end) -> str:
@@ -50,7 +50,7 @@ def _fmt_duration(start, end) -> str:
             return f"{m:2d}m {s:02d}s"
         return f"    {s:2d}s"
     except Exception:
-        return "-"
+        return ""
 
 
 def _highlight(text: str, terms: list[str]) -> Text:
