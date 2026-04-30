@@ -160,8 +160,6 @@ class VertexExplorer(App):
             except RuntimeError:
                 pass
 
-        overview = self.query_one(OverviewTab)
-
         if not self._auth_granted:
             self._auth_granted = self._check_auth()
             if not self._auth_granted:
@@ -170,10 +168,17 @@ class VertexExplorer(App):
                 self._loading_runs = False
                 return
 
+        def on_error():
+            self._loading_schedules = False
+            self._loading_runs = False
+            _call(self.set_notification, "[red]Error during fetching[/]")
+
         try:
             import google.cloud.aiplatform_v1  # noqa: F401
 
             _call(self.set_notification, "Fetching schedules...")
+
+            overview = self.query_one(OverviewTab)
 
             def on_schedules(s):
                 self._loading_schedules = False
@@ -185,11 +190,9 @@ class VertexExplorer(App):
                 _call(self.set_notification, "")
                 _call(overview._on_runs_ready, r)
 
-            fetch_all(on_schedules=on_schedules, on_runs=on_runs)
+            fetch_all(on_schedules=on_schedules, on_runs=on_runs, on_error=on_error)
         except Exception:
-            _call(self.set_notification, "[red]Error during fetching[/]")
-            self._loading_schedules = False
-            self._loading_runs = False
+            on_error()
 
     # ── helpers ───────────────────────────────────────────────────────────────
 
