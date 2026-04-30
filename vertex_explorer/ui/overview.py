@@ -83,6 +83,7 @@ class OverviewTab(Vertical):
 
         rt = self.query_one("#runs-table", _DataTable)
         rt.add_columns("Status", "Start", "Duration")
+        self._rt_name_col = rt.add_column("Name")
         rt.cursor_type = "row"
 
         self.watch(rt, "scroll_y", self._on_runs_scroll_y)

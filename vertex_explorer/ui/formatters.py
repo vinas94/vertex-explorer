@@ -23,7 +23,7 @@ def _run_dots(runs: list) -> Text:
 
 def _fmt_region(resource_name: str) -> str:
     _, project, _, region, _, resource_id = resource_name.split("/")
-    if config.X:
+    if config.SHORT_REGIONS:
         return region.split("-", maxsplit=1)[1]
     return region
 

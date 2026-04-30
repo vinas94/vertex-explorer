@@ -18,7 +18,7 @@ LOCATIONS = ["europe-west3", "europe-west4"]
 RUNS_DAYS = 3
 SCHEDULES_DAYS = 3
 
-X = True
+SHORT_REGIONS = True
 RUNS_PAGE_SIZE = 100
 RUN_STATE_STYLE = {
     "PIPELINE_STATE_SUCCEEDED": "green",
@@ -30,17 +30,21 @@ RUN_STATE_STYLE = {
 
 
 def load_settings() -> None:
-    global PROJECT, LOCATIONS, RUNS_DAYS, SCHEDULES_DAYS
+    global PROJECT, LOCATIONS, RUNS_DAYS, SCHEDULES_DAYS, SHORT_REGIONS
 
     try:
         data = json.loads(_SETTINGS_PATH.read_text())
     except Exception:
         return
 
-    PROJECT = data.get("PROJECT", PROJECT)
-    LOCATIONS = list(dict.fromkeys(data.get("LOCATIONS", LOCATIONS)))
-    RUNS_DAYS = data.get("RUNS_DAYS", RUNS_DAYS)
-    SCHEDULES_DAYS = data.get("SCHEDULES_DAYS", SCHEDULES_DAYS)
+    try:
+        PROJECT = data.get("PROJECT", PROJECT)
+        LOCATIONS = list(dict.fromkeys(data.get("LOCATIONS", LOCATIONS)))
+        RUNS_DAYS = data.get("RUNS_DAYS", RUNS_DAYS)
+        SCHEDULES_DAYS = data.get("SCHEDULES_DAYS", SCHEDULES_DAYS)
+        SHORT_REGIONS = bool(data.get("SHORT_REGIONS", SHORT_REGIONS))
+    except Exception:
+        pass
 
 
 def save_settings() -> None:
@@ -52,6 +56,7 @@ def save_settings() -> None:
                 "LOCATIONS": LOCATIONS,
                 "RUNS_DAYS": RUNS_DAYS,
                 "SCHEDULES_DAYS": SCHEDULES_DAYS,
+                "SHORT_REGIONS": SHORT_REGIONS,
             },
             indent=2,
         )
