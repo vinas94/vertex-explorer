@@ -104,7 +104,6 @@ class OverviewTab(Vertical):
         rt.remove_class("-scheduled")
         self._rt_name_col = rt.add_column("Name")
 
-        self._update_status()
         self.app.fetch_data()
 
     def open_current(self) -> None:
@@ -235,32 +234,33 @@ class OverviewTab(Vertical):
         for sched in sorted(self._schedules, key=_sort_key, reverse=True):
             name = sched["name"]
             state = sched.get("state", "")
-            display = sched.get("display_name", "")
+            display_name = sched.get("display_name", "")
             synthetic = sched.get("_synthetic")
 
             if self.active and state != "ACTIVE" and not synthetic:
                 continue
             if self.region_ and name.split("/")[3] != self.region_:
                 continue
-            if predicate and not predicate(display):
+            if predicate and not predicate(display_name):
                 continue
 
             if synthetic:
-                name_cell = Text(display, style="italic dim")
+                name_cell = Text(display_name, style="italic dim")
             elif filter_terms:
-                name_cell = _highlight(display, filter_terms)
+                name_cell = _highlight(display_name, filter_terms)
             else:
-                name_cell = display
+                name_cell = display_name
 
             table.add_row(
                 _fmt_region(name),
-                Text(state, style="green" if state == "ACTIVE" else "dim"),
+                Text(state, style="green" if state == "ACTIVE" else "dim" if not synthetic else ""),
                 sched.get("cron", "-") or "-",
                 _fmt_time(sched.get("nextRunTime")),
                 _run_dots(self._runs_by_schedule.get(name, [])),
                 name_cell,
                 key=name,
             )
+
             if not synthetic:
                 count += 1
 
