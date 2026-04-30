@@ -178,7 +178,7 @@ class VertexExplorer(App):
         self.loading_schedules = False
         self.schedules = build_schedules(schedules_by_loc)
         self.schedule_names = {s["name"]: s.get("display_name", "") for s in self.schedules}
-        self.set_notification("")
+        self.set_notification("Fetching runs...")
         self.query_one(OverviewTab).repopulate_schedules()
 
     def on_runs_ready(self, runs_by_loc: dict) -> None:
