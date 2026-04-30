@@ -315,11 +315,10 @@ class OverviewTab(Vertical):
 
     @property
     def _selected_schedule(self) -> str | None:
-        try:
-            st = self.query_one("#schedules-table", _DataTable)
-            return st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
-        except Exception:
+        st = self.query_one("#schedules-table", _DataTable)
+        if not st.row_count:
             return None
+        return st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
 
     @property
     def notification(self) -> str:
