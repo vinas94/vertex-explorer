@@ -59,6 +59,8 @@ class VertexExplorer(App):
         yield _Footer()
 
     notification: str = ""
+    _loading_schedules: bool = False
+    _loading_runs: bool = False
 
     def on_mount(self) -> None:
         self.set_notification("Initialising...")
@@ -136,12 +138,17 @@ class VertexExplorer(App):
             self.query_one("#tab-overview").set_class(on_overview, "-active")
             self.query_one("#tab-tracker").set_class(not on_overview, "-active")
             self._active_tab.focus_default()
+            self._refresh_status()
         except Exception:
             pass
 
     # ── data loading ─────────────────────────────────────────────────────────
 
     def fetch_data(self) -> None:
+        if self._loading_schedules or self._loading_runs:
+            return
+        self._loading_schedules = True
+        self._loading_runs = True
         self._fetch_worker()
 
     @work(thread=True)
@@ -160,17 +167,20 @@ class VertexExplorer(App):
             _call(self.set_notification, "Fetching schedules...")
 
             def on_schedules(s):
+                self._loading_schedules = False
                 _call(self.set_notification, "Fetching runs...")
                 _call(overview._on_schedules_ready, s)
 
             def on_runs(r):
+                self._loading_runs = False
                 _call(self.set_notification, "")
                 _call(overview._on_runs_ready, r)
 
             fetch_all(on_schedules=on_schedules, on_runs=on_runs)
         except Exception as e:
+            self._loading_schedules = False
+            self._loading_runs = False
             _call(self.set_notification, f"[red]Error:[/] {str(e)[:60]}")
-            _call(overview._on_fetch_error)
 
     # ── helpers ───────────────────────────────────────────────────────────────
 
@@ -202,13 +212,7 @@ class VertexExplorer(App):
         self._refresh_status()
 
     def _refresh_status(self, right: str = "") -> None:
-        try:
-            tab = self.query_one(OverviewTab if self.tab == "overview" else TrackerTab)
-            tab_notification = getattr(tab, "notification", "")
-        except Exception:
-            tab_notification = ""
-
-        left = self.notification or tab_notification
+        left = self.notification or self._active_tab.notification
         self.query_one("#status-left", Label).update(left)
         self.query_one("#status-right", Label).update(right)
 

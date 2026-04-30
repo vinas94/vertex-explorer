@@ -48,8 +48,6 @@ class OverviewTab(Vertical):
         self._schedules: list[dict] = []
         self._runs_by_schedule: dict[str, list] = {}
         self._last_refresh: datetime | None = None
-        self._loading_schedules = False
-        self._loading_runs = False
         self._run_cursors: dict[str, str] = {}
         self._run_offsets: dict[str, int] = {}
         self._current_schedule: str | None = None
@@ -90,10 +88,6 @@ class OverviewTab(Vertical):
     # ── actions ───────────────────────────────────────────────────────────────
 
     def reload(self) -> None:
-        if self._loading_schedules or self._loading_runs:
-            return
-        self._loading_schedules = True
-        self._loading_runs = True
         self._schedules = []
         self._runs_by_schedule = {}
         self._current_schedule = None
@@ -185,13 +179,11 @@ class OverviewTab(Vertical):
         self._schedules = build_schedules(schedules_by_loc)
         self._total_schedules = sum(1 for s in self._schedules if not s.get("_synthetic"))
         self._last_refresh = datetime.now()
-        self._loading_schedules = False
         self._repopulate_schedules()
 
     def _on_runs_ready(self, runs_by_loc: dict) -> None:
         all_runs = [r for rl in runs_by_loc.values() for r in rl]
         self._runs_by_schedule = build_runs_index(all_runs)
-        self._loading_runs = False
         self._update_dots()
         self._repopulate_runs()
 
@@ -203,10 +195,6 @@ class OverviewTab(Vertical):
                 table.update_cell(row_key, self._st_prev_col, dots)
             except Exception:
                 pass
-
-    def _on_fetch_error(self) -> None:
-        self._loading_schedules = False
-        self._loading_runs = False
 
     # ── rendering ─────────────────────────────────────────────────────────────
 
