@@ -21,6 +21,11 @@ from vertex_explorer.ui.formatters import (
     _highlight,
     _run_dots,
 )
+from vertex_explorer.ui.widgets import ClickableInput
+
+
+class _FilterInput(ClickableInput):
+    pass
 
 
 class _DataTable(DataTable):
@@ -59,7 +64,7 @@ class OverviewTab(Vertical):
     # ── layout ────────────────────────────────────────────────────────────────
 
     def compose(self):
-        yield Input(placeholder="filter...", id="filter-input")
+        yield _FilterInput(placeholder="filter...", id="filter-input")
         yield Horizontal(
             _DataTable(id="schedules-table", cursor_foreground_priority="renderable"),
             _DataTable(id="runs-table", cursor_foreground_priority="renderable"),
@@ -88,7 +93,7 @@ class OverviewTab(Vertical):
     # ── actions ───────────────────────────────────────────────────────────────
 
     def action_focus_filter(self) -> None:
-        self.query_one("#filter-input", Input).focus()
+        self.query_one("#filter-input", _FilterInput).focus()
 
     def watch_filter(self) -> None:
         self._repopulate_schedules()
@@ -131,7 +136,7 @@ class OverviewTab(Vertical):
             self.query_one("#schedules-table", _DataTable).focus()
 
     def escape(self) -> None:
-        fi = self.query_one("#filter-input", Input)
+        fi = self.query_one("#filter-input", _FilterInput)
         if fi.has_focus:
             self.focus_default()
 

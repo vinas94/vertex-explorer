@@ -3,9 +3,9 @@ from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label
-from textual.widgets._input import Selection
 
 import vertex_explorer.config as config
+from vertex_explorer.ui.widgets import ClickableInput
 
 _GRID = [
     [("Runs Days", "s-runs-days"), ("Project", "s-project")],
@@ -28,31 +28,14 @@ def _current_value(id_: str) -> str:
     }[id_]
 
 
-class _NavInput(Input):
+class _NavInput(ClickableInput):
     can_focus = False
 
     async def _on_click(self, event) -> None:
         self.can_focus = True
         self.focus()
         self.screen.cursor = _GRID_POS[self.id]  # type: ignore
-        if event.chain == 2:
-            self._select_word()
-            event.prevent_default()
-        elif event.chain >= 3:
-            self.action_select_all()
-            event.prevent_default()
-
-    def _select_word(self) -> None:
-        v, pos = self.value, self.cursor_position
-        is_word = lambda c: c.isalnum() or c == "-"
-        start = pos
-        while start > 0 and is_word(v[start - 1]):
-            start -= 1
-        end = pos
-        while end < len(v) and is_word(v[end]):
-            end += 1
-        if start < end:
-            self.selection = Selection(start, end)
+        await super()._on_click(event)
 
     def on_blur(self) -> None:
         self.can_focus = False
