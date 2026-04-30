@@ -55,7 +55,8 @@ class OverviewTab(Vertical):
         self._run_offsets: dict[str, int] = {}
         self._current_schedule: str | None = None
         self._total_schedules: int = 0
-        self._prev_col = None
+        self._st_prev_col = None
+        self._rt_name_col = None
 
     # ── layout ────────────────────────────────────────────────────────────────
 
@@ -73,12 +74,12 @@ class OverviewTab(Vertical):
         st.add_column("Status")
         st.add_column("Cron")
         st.add_column("Next Run")
-        self._prev_col = st.add_column("Prev", width=7)
+        self._st_prev_col = st.add_column("Prev", width=7)
         st.add_column("Name")
         st.cursor_type = "row"
 
         rt = self.query_one("#runs-table", _DataTable)
-        rt.add_columns("Status", "Start", "Duration", "Name")
+        rt.add_columns("Status", "Start", "Duration")
         rt.cursor_type = "row"
 
         self.watch(rt, "scroll_y", self._on_runs_scroll_y)
@@ -96,12 +97,13 @@ class OverviewTab(Vertical):
         self._loading_runs = True
         self._schedules = []
         self._runs_by_schedule = {}
+        self._current_schedule = None
 
         self.query_one("#schedules-table", _DataTable).clear()
         rt = self.query_one("#runs-table", _DataTable)
-        rt.clear(columns=True)
-        rt.add_columns("Status", "Start", "Duration", "Name")
+        rt.clear()
         rt.remove_class("-scheduled")
+        self._rt_name_col = rt.add_column("Name")
 
         self._update_status()
         self._load_data()
@@ -216,7 +218,7 @@ class OverviewTab(Vertical):
         for row_key in table.rows:
             dots = _run_dots(self._runs_by_schedule.get(row_key.value, []))
             try:
-                table.update_cell(row_key, self._prev_col, dots)
+                table.update_cell(row_key, self._st_prev_col, dots)
             except Exception:
                 pass
 
@@ -298,12 +300,16 @@ class OverviewTab(Vertical):
         except Exception:
             pass
 
+        is_unscheduled = selected_schedule.endswith("__unscheduled__")
         self._current_schedule = selected_schedule
 
-        runs_table.clear(columns=True)
-        runs_table.add_columns("Status", "Start", "Duration")
-        if is_unscheduled := selected_schedule.endswith("__unscheduled__"):
-            runs_table.add_columns("Name")
+        runs_table.set_class(not is_unscheduled, "-scheduled")
+        runs_table.clear()
+        if is_unscheduled and self._rt_name_col is None:
+            self._rt_name_col = runs_table.add_column("Name")
+        elif not is_unscheduled and self._rt_name_col is not None:
+            runs_table.remove_column(self._rt_name_col)
+            self._rt_name_col = None
 
         all_runs = self._runs_by_schedule.get(selected_schedule, [])
         self._append_run_rows(runs_table, all_runs[:RUNS_PAGE_SIZE], is_unscheduled)
@@ -315,11 +321,6 @@ class OverviewTab(Vertical):
                 if row_key.value == saved:
                     runs_table.move_cursor(row=idx)
                     break
-
-        # set_class triggers refresh() before layout recalculates, caching rows at the
-        # wrong width. Defer cache invalidation so the next frame renders at correct size.
-        runs_table.set_class(not is_unscheduled, "-scheduled")
-        self.call_after_refresh(runs_table._clear_caches)
 
     def _load_more_runs(self) -> None:
         selected = self._current_schedule
