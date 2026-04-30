@@ -186,16 +186,19 @@ class VertexExplorer(App):
             _call(self.set_notification, "Fetching schedules...")
 
             overview = self.query_one(OverviewTab)
+            tracker = self.query_one(TrackerTab)
 
             def on_schedules(s):
                 self._loading_schedules = False
                 _call(self.set_notification, "Fetching runs...")
                 _call(overview.on_schedules_ready, s)
+                _call(tracker.on_schedules_ready, s)
 
             def on_runs(r):
                 self._loading_runs = False
                 _call(self.set_notification, "")
                 _call(overview.on_runs_ready, r)
+                _call(tracker.on_runs_ready, r)
 
             fetch_all(on_schedules=on_schedules, on_runs=on_runs, on_error=on_error)
         except Exception:

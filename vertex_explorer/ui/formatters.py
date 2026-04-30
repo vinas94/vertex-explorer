@@ -3,7 +3,7 @@ import re
 import pendulum
 from rich.text import Text
 
-from vertex_explorer.config import RUN_STATE_STYLE
+import vertex_explorer.config as config
 
 
 def _console_url(resource_name: str, kind: str) -> str:
@@ -17,7 +17,7 @@ def _console_url(resource_name: str, kind: str) -> str:
 def _run_dots(runs: list) -> Text:
     rt = Text()
     for run in runs[:5]:
-        rt.append("●", style=RUN_STATE_STYLE.get(run.state.name, "dim"))
+        rt.append("●", style=config.RUN_STATE_STYLE.get(run.state.name, "dim"))
     return rt
 
 

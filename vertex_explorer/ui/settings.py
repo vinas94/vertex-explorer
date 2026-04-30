@@ -5,7 +5,6 @@ from textual.screen import ModalScreen
 from textual.widgets import Input, Label
 
 import vertex_explorer.config as config
-from vertex_explorer.config import save_settings
 from vertex_explorer.ui.widgets import ClickableInput
 
 _GRID = [
@@ -150,6 +149,6 @@ class SettingsScreen(ModalScreen[bool]):
         config.SCHEDULES_DAYS = new_schedules_days
 
         if needs_refresh:
-            save_settings()
+            config.save_settings()
 
         return needs_refresh

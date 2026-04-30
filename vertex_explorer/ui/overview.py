@@ -10,7 +10,6 @@ from textual.reactive import reactive
 from textual.widgets import DataTable, Input
 
 import vertex_explorer.config as config
-from vertex_explorer.config import RUN_STATE_STYLE, RUNS_PAGE_SIZE
 from vertex_explorer.filters import parse_filter
 from vertex_explorer.processor import build_runs_index, build_schedules
 from vertex_explorer.ui.formatters import (
@@ -284,8 +283,8 @@ class OverviewTab(Vertical):
             self._rt_name_col = None
 
         all_runs = self._runs_by_schedule.get(selected_schedule, [])
-        self._append_run_rows(runs_table, all_runs[:RUNS_PAGE_SIZE], is_unscheduled)
-        self._run_offsets[selected_schedule] = RUNS_PAGE_SIZE
+        self._append_run_rows(runs_table, all_runs[: config.RUNS_PAGE_SIZE], is_unscheduled)
+        self._run_offsets[selected_schedule] = config.RUNS_PAGE_SIZE
 
         if selected_schedule in self._run_cursors:
             saved = self._run_cursors[selected_schedule]
@@ -298,7 +297,7 @@ class OverviewTab(Vertical):
         selected = self._current_schedule
         all_runs = self._runs_by_schedule.get(selected, [])
         offset = self._run_offsets.get(selected, 0)
-        batch = all_runs[offset : offset + RUNS_PAGE_SIZE]
+        batch = all_runs[offset : offset + config.RUNS_PAGE_SIZE]
         if not batch:
             return
         is_unscheduled = selected.endswith("__unscheduled__")
@@ -311,7 +310,7 @@ class OverviewTab(Vertical):
         cutoff_24h = pendulum.now("UTC").subtract(hours=24)
         for run in runs:
             state_name = run.state.name
-            state = Text(state_name.replace("PIPELINE_STATE_", ""), style=RUN_STATE_STYLE.get(state_name, "dim"))
+            state = Text(state_name.replace("PIPELINE_STATE_", ""), style=config.RUN_STATE_STYLE.get(state_name, "dim"))
             recent_fail = (
                 state_name == "PIPELINE_STATE_FAILED" and run.end_time and pendulum.instance(run.end_time) >= cutoff_24h
             )

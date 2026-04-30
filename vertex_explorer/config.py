@@ -18,6 +18,7 @@ LOCATIONS = ["europe-west3", "europe-west4"]
 RUNS_DAYS = 3
 SCHEDULES_DAYS = 3
 
+X = True
 RUNS_PAGE_SIZE = 100
 RUN_STATE_STYLE = {
     "PIPELINE_STATE_SUCCEEDED": "green",
