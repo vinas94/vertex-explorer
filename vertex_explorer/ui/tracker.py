@@ -13,3 +13,6 @@ class TrackerTab(Vertical):
 
     def escape(self) -> None:
         pass
+
+    def reset(self) -> None:
+        pass

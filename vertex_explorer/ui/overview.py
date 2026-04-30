@@ -45,9 +45,9 @@ class OverviewTab(Vertical):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
+        self._last_refresh: datetime | None = None
         self._schedules: list[dict] = []
         self._runs_by_schedule: dict[str, list] = {}
-        self._last_refresh: datetime | None = None
         self._run_cursors: dict[str, str] = {}
         self._run_offsets: dict[str, int] = {}
         self._current_schedule: str | None = None
@@ -87,20 +87,25 @@ class OverviewTab(Vertical):
 
     # ── actions ───────────────────────────────────────────────────────────────
 
-    def reload(self) -> None:
-        self._schedules = []
-        self._runs_by_schedule = {}
-        self._current_schedule = None
+    def action_focus_filter(self) -> None:
+        self.query_one("#filter-input", Input).focus()
 
-        self.query_one("#schedules-table", _DataTable).clear()
-        rt = self.query_one("#runs-table", _DataTable)
-        rt.clear()
-        rt.remove_class("-scheduled")
-        self._rt_name_col = rt.add_column("Name")
+    def watch_filter(self) -> None:
+        self._repopulate_schedules()
+        self.app._update_binding_highlights()
 
-        self.app.fetch_data()
+    def action_toggle_region(self) -> None:
+        cycle = dict(zip([None, *LOCATIONS], [*LOCATIONS, None]))
+        self.region_ = cycle[self.region_]
+        self._repopulate_schedules()
+        self.app._update_binding_highlights()
 
-    def open_current(self) -> None:
+    def action_toggle_active(self) -> None:
+        self.active = not self.active
+        self._repopulate_schedules()
+        self.app._update_binding_highlights()
+
+    def action_open_current(self) -> None:
         st = self.query_one("#schedules-table", _DataTable)
         rt = self.query_one("#runs-table", _DataTable)
         try:
@@ -115,29 +120,6 @@ class OverviewTab(Vertical):
         except Exception:
             pass
 
-    def escape(self) -> None:
-        fi = self.query_one("#filter-input", Input)
-        if fi.has_focus:
-            self.focus_default()
-
-    def action_focus_filter(self) -> None:
-        self.query_one("#filter-input", Input).focus()
-
-    def action_toggle_region(self) -> None:
-        cycle = dict(zip([None, *LOCATIONS], [*LOCATIONS, None]))
-        self.region_ = cycle[self.region_]
-        self._repopulate_schedules()
-        self.app._update_binding_highlights()
-
-    def action_toggle_active(self) -> None:
-        self.active = not self.active
-        self._repopulate_schedules()
-        self.app._update_binding_highlights()
-
-    def watch_filter(self) -> None:
-        self._repopulate_schedules()
-        self.app._update_binding_highlights()
-
     def action_focus_right(self) -> None:
         st = self.query_one("#schedules-table", _DataTable)
         if st.has_focus:
@@ -147,6 +129,22 @@ class OverviewTab(Vertical):
         rt = self.query_one("#runs-table", _DataTable)
         if rt.has_focus:
             self.query_one("#schedules-table", _DataTable).focus()
+
+    def escape(self) -> None:
+        fi = self.query_one("#filter-input", Input)
+        if fi.has_focus:
+            self.focus_default()
+
+    def reset(self) -> None:
+        self._schedules = []
+        self._runs_by_schedule = {}
+        self._current_schedule = None
+
+        self.query_one("#schedules-table", _DataTable).clear()
+        rt = self.query_one("#runs-table", _DataTable)
+        rt.clear()
+        rt.remove_class("-scheduled")
+        self._rt_name_col = rt.add_column("Name")
 
     # ── events ────────────────────────────────────────────────────────────────
 
@@ -191,10 +189,7 @@ class OverviewTab(Vertical):
         table = self.query_one("#schedules-table", _DataTable)
         for row_key in table.rows:
             dots = _run_dots(self._runs_by_schedule.get(row_key.value, []))
-            try:
-                table.update_cell(row_key, self._st_prev_col, dots)
-            except Exception:
-                pass
+            table.update_cell(row_key, self._st_prev_col, dots)
 
     # ── rendering ─────────────────────────────────────────────────────────────
 

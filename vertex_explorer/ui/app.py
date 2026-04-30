@@ -40,6 +40,11 @@ class VertexExplorer(App):
     TABS = ["overview", "tracker"]
     tab: reactive[str] = reactive("overview")
 
+    notification: str = ""
+    _loading_schedules: bool = False
+    _loading_runs: bool = False
+    _auth_granted: bool = False
+
     # ── layout ────────────────────────────────────────────────────────────────
 
     def compose(self) -> ComposeResult:
@@ -58,14 +63,9 @@ class VertexExplorer(App):
         yield TrackerTab(id="tracker-tab")
         yield _Footer()
 
-    notification: str = ""
-    _loading_schedules: bool = False
-    _loading_runs: bool = False
-
     def on_mount(self) -> None:
         self.set_notification("Initialising...")
-        self.query_one(OverviewTab).reload()
-        self.watch_tab()
+        self.fetch_data()
 
     def on_click(self, event) -> None:
         if event.widget and event.widget.id == "tab-overview":
@@ -77,11 +77,15 @@ class VertexExplorer(App):
 
     def action_refresh(self) -> None:
         self._flash_key("refresh")
-        self._active_tab.reload()
+        if self._loading_schedules or self._loading_runs:
+            return
+        self.query_one(OverviewTab).reset()
+        self.query_one(TrackerTab).reset()
+        self.fetch_data()
 
     def action_open(self) -> None:
         self._flash_key("open")
-        self._active_tab.open_current()
+        self._active_tab.action_open_current()
 
     def action_settings(self) -> None:
         self._flash_key("settings", auto_clear=False)
@@ -131,16 +135,13 @@ class VertexExplorer(App):
         self.tab = self.TABS[(self.TABS.index(self.tab) + 1) % len(self.TABS)]
 
     def watch_tab(self) -> None:
-        try:
-            on_overview = self.tab == "overview"
-            self.query_one(OverviewTab).display = on_overview
-            self.query_one(TrackerTab).display = not on_overview
-            self.query_one("#tab-overview").set_class(on_overview, "-active")
-            self.query_one("#tab-tracker").set_class(not on_overview, "-active")
-            self._active_tab.focus_default()
-            self._refresh_status()
-        except Exception:
-            pass
+        on_overview = self.tab == "overview"
+        self.query_one(OverviewTab).display = on_overview
+        self.query_one(TrackerTab).display = not on_overview
+        self.query_one("#tab-overview").set_class(on_overview, "-active")
+        self.query_one("#tab-tracker").set_class(not on_overview, "-active")
+        self._active_tab.focus_default()
+        self._refresh_status()
 
     # ── data loading ─────────────────────────────────────────────────────────
 
@@ -161,12 +162,15 @@ class VertexExplorer(App):
 
         overview = self.query_one(OverviewTab)
 
-        if not self._check_auth():
-            _call(self.set_notification, "[red]Authentication error[/]")
-            return
+        if not self._auth_granted:
+            self._auth_granted = self._check_auth()
+            if not self._auth_granted:
+                _call(self.set_notification, "[red]Authentication error[/]")
+                self._loading_schedules = False
+                self._loading_runs = False
+                return
 
         try:
-            # Trigger heavy imports
             import google.cloud.aiplatform_v1  # noqa: F401
 
             _call(self.set_notification, "Fetching schedules...")
@@ -183,9 +187,9 @@ class VertexExplorer(App):
 
             fetch_all(on_schedules=on_schedules, on_runs=on_runs)
         except Exception:
+            _call(self.set_notification, "[red]Error during fetching[/]")
             self._loading_schedules = False
             self._loading_runs = False
-            _call(self.set_notification, "[red]Error during fetching[/]")
 
     # ── helpers ───────────────────────────────────────────────────────────────
 
@@ -233,7 +237,7 @@ class VertexExplorer(App):
         self._refresh_status()
 
     def _refresh_status(self, right: str = "") -> None:
-        left = self.notification or self._active_tab.notification
+        left = self.notification or getattr(self._active_tab, "notification", "")
         self.query_one("#status-left", Label).update(left)
         self.query_one("#status-right", Label).update(right)
 
