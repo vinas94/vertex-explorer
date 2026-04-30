@@ -171,7 +171,30 @@ class VertexExplorer(App):
             return
         self.loading_schedules = True
         self.loading_runs = True
+        self.last_refresh = datetime.now()
         self._fetch_worker()
+
+    def on_schedules_ready(self, schedules_by_loc: dict) -> None:
+        self.loading_schedules = False
+        self.schedules = build_schedules(schedules_by_loc)
+        self.schedule_names = {s["name"]: s.get("display_name", "") for s in self.schedules}
+        self.set_notification("")
+        self.query_one(OverviewTab).repopulate_schedules()
+
+    def on_runs_ready(self, runs_by_loc: dict) -> None:
+        self.loading_runs = False
+        all_runs = [r for rl in runs_by_loc.values() for r in rl]
+        self.runs_by_schedule = build_runs_index(all_runs)
+        self.runs = sorted(
+            all_runs,
+            key=lambda r: r.start_time or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
+        self.set_notification("")
+        overview = self.query_one(OverviewTab)
+        overview.update_dots()
+        overview.repopulate_runs()
+        self.query_one(TrackerTab).repopulate()
 
     @work(thread=True)
     def _fetch_worker(self) -> None:
@@ -198,23 +221,11 @@ class VertexExplorer(App):
             import google.cloud.aiplatform_v1  # noqa
 
             _call(self.set_notification, "Fetching schedules...")
-
-            overview = self.query_one(OverviewTab)
-            tracker = self.query_one(TrackerTab)
-
-            def on_schedules(s):
-                self.loading_schedules = False
-                _call(self.set_notification, "Fetching runs...")
-                _call(overview.on_schedules_ready, s)
-                _call(tracker.on_schedules_ready, s)
-
-            def on_runs(r):
-                self.loading_runs = False
-                _call(self.set_notification, "")
-                _call(overview.on_runs_ready, r)
-                _call(tracker.on_runs_ready, r)
-
-            fetch_all(on_schedules=on_schedules, on_runs=on_runs, on_error=on_error)
+            fetch_all(
+                on_schedules=lambda s: _call(self.on_schedules_ready, s),
+                on_runs=lambda r: _call(self.on_runs_ready, r),
+                on_error=on_error,
+            )
         except Exception:
             on_error()
 
