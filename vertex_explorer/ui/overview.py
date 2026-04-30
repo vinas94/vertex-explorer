@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 import pendulum
 from rich.text import Text
-from textual import on, work
+from textual import events, on, work
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
@@ -22,6 +22,13 @@ from vertex_explorer.ui.formatters import (
     _highlight,
     _run_dots,
 )
+
+
+class _DataTable(DataTable):
+    def _on_resize(self, event: events.Resize) -> None:
+        super()._on_resize(event)
+        self._clear_caches()
+        self.refresh()
 
 
 class OverviewTab(Vertical):
@@ -55,13 +62,13 @@ class OverviewTab(Vertical):
     def compose(self):
         yield Input(placeholder="filter...", id="filter-input")
         yield Horizontal(
-            DataTable(id="schedules-table", cursor_foreground_priority="renderable"),
-            DataTable(id="runs-table", cursor_foreground_priority="renderable"),
+            _DataTable(id="schedules-table", cursor_foreground_priority="renderable"),
+            _DataTable(id="runs-table", cursor_foreground_priority="renderable"),
             id="content",
         )
 
     def on_mount(self) -> None:
-        st = self.query_one("#schedules-table", DataTable)
+        st = self.query_one("#schedules-table", _DataTable)
         st.add_column("Region")
         st.add_column("Status")
         st.add_column("Cron")
@@ -70,7 +77,7 @@ class OverviewTab(Vertical):
         st.add_column("Name")
         st.cursor_type = "row"
 
-        rt = self.query_one("#runs-table", DataTable)
+        rt = self.query_one("#runs-table", _DataTable)
         rt.add_columns("Status", "Start", "Duration", "Name")
         rt.cursor_type = "row"
 
@@ -78,7 +85,7 @@ class OverviewTab(Vertical):
         self.reload()
 
     def focus_default(self) -> None:
-        self.query_one("#schedules-table", DataTable).focus()
+        self.query_one("#schedules-table", _DataTable).focus()
 
     # ── actions ───────────────────────────────────────────────────────────────
 
@@ -90,8 +97,8 @@ class OverviewTab(Vertical):
         self._schedules = []
         self._runs_by_schedule = {}
 
-        self.query_one("#schedules-table", DataTable).clear()
-        rt = self.query_one("#runs-table", DataTable)
+        self.query_one("#schedules-table", _DataTable).clear()
+        rt = self.query_one("#runs-table", _DataTable)
         rt.clear(columns=True)
         rt.add_columns("Status", "Start", "Duration", "Name")
         rt.remove_class("-scheduled")
@@ -100,8 +107,8 @@ class OverviewTab(Vertical):
         self._load_data()
 
     def open_current(self) -> None:
-        st = self.query_one("#schedules-table", DataTable)
-        rt = self.query_one("#runs-table", DataTable)
+        st = self.query_one("#schedules-table", _DataTable)
+        rt = self.query_one("#runs-table", _DataTable)
         try:
             if st.has_focus:
                 name = st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
@@ -138,14 +145,14 @@ class OverviewTab(Vertical):
         self.app._update_binding_highlights()
 
     def action_focus_right(self) -> None:
-        st = self.query_one("#schedules-table", DataTable)
+        st = self.query_one("#schedules-table", _DataTable)
         if st.has_focus:
-            self.query_one("#runs-table", DataTable).focus()
+            self.query_one("#runs-table", _DataTable).focus()
 
     def action_focus_left(self) -> None:
-        rt = self.query_one("#runs-table", DataTable)
+        rt = self.query_one("#runs-table", _DataTable)
         if rt.has_focus:
-            self.query_one("#schedules-table", DataTable).focus()
+            self.query_one("#schedules-table", _DataTable).focus()
 
     # ── events ────────────────────────────────────────────────────────────────
 
@@ -168,7 +175,7 @@ class OverviewTab(Vertical):
             self._load_more_runs()
 
     def _on_runs_scroll_y(self, scroll_y: float) -> None:
-        table = self.query_one("#runs-table", DataTable)
+        table = self.query_one("#runs-table", _DataTable)
         if self._current_schedule and table.max_scroll_y > 0 and scroll_y >= table.max_scroll_y:
             self._load_more_runs()
 
@@ -205,7 +212,7 @@ class OverviewTab(Vertical):
         self._repopulate_runs()
 
     def _update_dots(self) -> None:
-        table = self.query_one("#schedules-table", DataTable)
+        table = self.query_one("#schedules-table", _DataTable)
         for row_key in table.rows:
             dots = _run_dots(self._runs_by_schedule.get(row_key.value, []))
             try:
@@ -221,7 +228,7 @@ class OverviewTab(Vertical):
     # ── rendering ─────────────────────────────────────────────────────────────
 
     def _repopulate_schedules(self) -> None:
-        table = self.query_one("#schedules-table", DataTable)
+        table = self.query_one("#schedules-table", _DataTable)
         predicate, filter_terms = parse_filter(self.filter)
 
         try:
@@ -282,7 +289,7 @@ class OverviewTab(Vertical):
 
     def _repopulate_runs(self) -> None:
         selected_schedule = self._selected_schedule
-        runs_table = self.query_one("#runs-table", DataTable)
+        runs_table = self.query_one("#runs-table", _DataTable)
 
         try:
             key = runs_table.coordinate_to_cell_key(runs_table.cursor_coordinate).row_key.value
@@ -309,10 +316,7 @@ class OverviewTab(Vertical):
                     runs_table.move_cursor(row=idx)
                     break
 
-        # set_class triggers refresh() before layout recalculates, caching rows at the
-        # wrong width. Defer cache invalidation so the next frame renders at correct size.
         runs_table.set_class(not is_unscheduled, "-scheduled")
-        self.call_after_refresh(runs_table._clear_caches)
 
     def _load_more_runs(self) -> None:
         selected = self._current_schedule
@@ -322,11 +326,11 @@ class OverviewTab(Vertical):
         if not batch:
             return
         is_unscheduled = selected.endswith("__unscheduled__")
-        table = self.query_one("#runs-table", DataTable)
+        table = self.query_one("#runs-table", _DataTable)
         self._append_run_rows(table, batch, is_unscheduled)
         self._run_offsets[selected] = offset + len(batch)
 
-    def _append_run_rows(self, table: DataTable, runs: list, is_unscheduled: bool) -> None:
+    def _append_run_rows(self, table: _DataTable, runs: list, is_unscheduled: bool) -> None:
         cutoff_24h = pendulum.now("UTC").subtract(hours=24)
         for run in runs:
             state_name = run.state.name
@@ -342,7 +346,7 @@ class OverviewTab(Vertical):
     @property
     def _selected_schedule(self) -> str | None:
         try:
-            st = self.query_one("#schedules-table", DataTable)
+            st = self.query_one("#schedules-table", _DataTable)
             return st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
         except Exception:
             return None
