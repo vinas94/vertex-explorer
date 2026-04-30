@@ -143,7 +143,7 @@ class VertexExplorer(App):
         self.query_one("#tab-overview").set_class(on_overview, "-active")
         self.query_one("#tab-tracker").set_class(not on_overview, "-active")
         self._active_tab.focus_default()
-        self._refresh_status()
+        self.refresh_status()
 
     # ── data loading ─────────────────────────────────────────────────────────
 
@@ -185,12 +185,12 @@ class VertexExplorer(App):
             def on_schedules(s):
                 self._loading_schedules = False
                 _call(self.set_notification, "Fetching runs...")
-                _call(overview._on_schedules_ready, s)
+                _call(overview.on_schedules_ready, s)
 
             def on_runs(r):
                 self._loading_runs = False
                 _call(self.set_notification, "")
-                _call(overview._on_runs_ready, r)
+                _call(overview.on_runs_ready, r)
 
             fetch_all(on_schedules=on_schedules, on_runs=on_runs, on_error=on_error)
         except Exception:
@@ -198,7 +198,8 @@ class VertexExplorer(App):
 
     # ── helpers ───────────────────────────────────────────────────────────────
 
-    def _check_auth(self) -> bool:
+    @staticmethod
+    def _check_auth() -> bool:
         import google.auth
         import google.auth.exceptions
         import google.auth.transport.requests
@@ -239,9 +240,9 @@ class VertexExplorer(App):
 
     def set_notification(self, msg: str) -> None:
         self.notification = msg
-        self._refresh_status()
+        self.refresh_status()
 
-    def _refresh_status(self, right: str = "") -> None:
+    def refresh_status(self, right: str = "") -> None:
         left = self.notification or getattr(self._active_tab, "notification", "")
         self.query_one("#status-left", Label).update(left)
         self.query_one("#status-right", Label).update(right)

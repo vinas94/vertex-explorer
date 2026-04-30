@@ -16,3 +16,6 @@ class TrackerTab(Vertical):
 
     def reset(self) -> None:
         pass
+
+    def action_open_current(self) -> None:
+        pass

@@ -174,18 +174,18 @@ class OverviewTab(Vertical):
 
     def _on_runs_scroll_y(self, scroll_y: float) -> None:
         table = self.query_one("#runs-table", _DataTable)
-        if self._current_schedule and table.max_scroll_y > 0 and scroll_y >= table.max_scroll_y:
+        if self._current_schedule and 0 < table.max_scroll_y <= scroll_y:
             self._load_more_runs()
 
     # ── data loading ──────────────────────────────────────────────────────────
 
-    def _on_schedules_ready(self, schedules_by_loc: dict) -> None:
+    def on_schedules_ready(self, schedules_by_loc: dict) -> None:
         self._schedules = build_schedules(schedules_by_loc)
         self._total_schedules = sum(1 for s in self._schedules if not s.get("_synthetic"))
         self._last_refresh = datetime.now()
         self._repopulate_schedules()
 
-    def _on_runs_ready(self, runs_by_loc: dict) -> None:
+    def on_runs_ready(self, runs_by_loc: dict) -> None:
         all_runs = [r for rl in runs_by_loc.values() for r in rl]
         self._runs_by_schedule = build_runs_index(all_runs)
         self._update_dots()
@@ -259,7 +259,7 @@ class OverviewTab(Vertical):
                     break
 
         self._visible_schedules = count
-        self.app._refresh_status(right=self._last_refresh.strftime("%H:%M:%S") if self._last_refresh else "")
+        self.app.refresh_status(right=self._last_refresh.strftime("%H:%M:%S") if self._last_refresh else "")
 
     def _repopulate_runs(self) -> None:
         selected_schedule = self._selected_schedule
@@ -306,7 +306,8 @@ class OverviewTab(Vertical):
         self._append_run_rows(table, batch, is_unscheduled)
         self._run_offsets[selected] = offset + len(batch)
 
-    def _append_run_rows(self, table: _DataTable, runs: list, is_unscheduled: bool) -> None:
+    @staticmethod
+    def _append_run_rows(table: _DataTable, runs: list, is_unscheduled: bool) -> None:
         cutoff_24h = pendulum.now("UTC").subtract(hours=24)
         for run in runs:
             state_name = run.state.name
