@@ -73,6 +73,7 @@ class OverviewTab(Vertical):
         rt.add_columns("Status", "Start", "Duration", "Name")
         rt.cursor_type = "row"
 
+        self.watch(rt, "scroll_y", self._on_runs_scroll_y)
         self.reload()
 
     def focus_default(self) -> None:
@@ -162,8 +163,12 @@ class OverviewTab(Vertical):
 
     @on(DataTable.RowHighlighted, "#runs-table")
     def _on_run_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        if self._current_schedule and event.cursor_row == event.data_table.row_count - 1:
+            self._load_more_runs()
+
+    def _on_runs_scroll_y(self, scroll_y: float) -> None:
         table = self.query_one("#runs-table", DataTable)
-        if self._current_schedule and event.cursor_row == table.row_count - 1:
+        if self._current_schedule and table.max_scroll_y > 0 and scroll_y >= table.max_scroll_y:
             self._load_more_runs()
 
     # ── data loading ──────────────────────────────────────────────────────────
