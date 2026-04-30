@@ -171,7 +171,7 @@ class VertexExplorer(App):
         def on_error():
             self._loading_schedules = False
             self._loading_runs = False
-            _call(self.set_notification, "[red]Error during fetching[/]")
+            _call(self.set_notification, "[red]Fetching failed[/]")
 
         try:
             import google.cloud.aiplatform_v1  # noqa: F401
