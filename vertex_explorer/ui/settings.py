@@ -87,8 +87,8 @@ class SettingsScreen(ModalScreen[bool]):
             return
         if event.key in ("ctrl+j", "shift+enter"):
             self.set_focus(None)
-            needs_refresh = self._save()
-            if needs_refresh:
+            needs_refresh, changed = self._save()
+            if changed:
                 self.app.notify("Settings updated")
             self.dismiss(needs_refresh)
             event.stop()
@@ -146,7 +146,7 @@ class SettingsScreen(ModalScreen[bool]):
                     _, id_, *_ = cell
                     self.query_one(f"#{id_}").set_class(r == row and c == col, "-cursor")
 
-    def _save(self) -> bool:
+    def _save(self) -> tuple[bool, bool]:
         def _int(idx: str, fallback: int) -> int:
             try:
                 return int(self.query_one(idx, Input).value.strip())
@@ -167,8 +167,8 @@ class SettingsScreen(ModalScreen[bool]):
             or new_locations != config.LOCATIONS
             or new_runs_days != config.RUNS_DAYS
             or new_schedules_days != config.SCHEDULES_DAYS
-            or new_short_regions != config.SHORT_REGIONS
         )
+        changed = needs_refresh or new_short_regions != config.SHORT_REGIONS
 
         config.PROJECT = new_project
         config.LOCATIONS = new_locations
@@ -176,7 +176,7 @@ class SettingsScreen(ModalScreen[bool]):
         config.SCHEDULES_DAYS = new_schedules_days
         config.SHORT_REGIONS = new_short_regions
 
-        if needs_refresh:
+        if changed:
             config.save_settings()
 
-        return needs_refresh
+        return needs_refresh, changed
