@@ -58,8 +58,11 @@ class VertexExplorer(App):
         yield TrackerTab(id="tracker-tab")
         yield _Footer()
 
+    notification: str = ""
+
     def on_mount(self) -> None:
-        self.update_status(left="Initialising...")
+        self.set_notification("Initialising...")
+        self.query_one(OverviewTab).reload()
         self.watch_tab()
 
     def on_click(self, event) -> None:
@@ -138,8 +141,11 @@ class VertexExplorer(App):
 
     # ── data loading ─────────────────────────────────────────────────────────
 
-    @work(thread=True)
     def fetch_data(self) -> None:
+        self._fetch_worker()
+
+    @work(thread=True)
+    def _fetch_worker(self) -> None:
         def _call(fn, *args, **kwargs):
             try:
                 self.call_from_thread(fn, *args, **kwargs)
@@ -148,12 +154,22 @@ class VertexExplorer(App):
 
         overview = self.query_one(OverviewTab)
         try:
-            fetch_all(
-                on_schedules=lambda s: _call(overview._on_schedules_ready, s),
-                on_runs=lambda r: _call(overview._on_runs_ready, r),
-            )
+            # Trigger heavy imports
+            import google.cloud.aiplatform_v1  # noqa
+
+            _call(self.set_notification, "Fetching schedules...")
+
+            def on_schedules(s):
+                _call(self.set_notification, "Fetching runs...")
+                _call(overview._on_schedules_ready, s)
+
+            def on_runs(r):
+                _call(self.set_notification, "")
+                _call(overview._on_runs_ready, r)
+
+            fetch_all(on_schedules=on_schedules, on_runs=on_runs)
         except Exception as e:
-            _call(self.update_status, left=f"[red]Error:[/] {str(e)[:60]}")
+            _call(self.set_notification, f"[red]Error:[/] {str(e)[:60]}")
             _call(overview._on_fetch_error)
 
     # ── helpers ───────────────────────────────────────────────────────────────
@@ -180,6 +196,21 @@ class VertexExplorer(App):
             }
         for key in self.query(FooterKey):
             key.set_class(toggled.get(key.action, False), "-toggled")
+
+    def set_notification(self, msg: str) -> None:
+        self.notification = msg
+        self._refresh_status()
+
+    def _refresh_status(self, right: str = "") -> None:
+        try:
+            tab = self.query_one(OverviewTab if self.tab == "overview" else TrackerTab)
+            tab_notification = getattr(tab, "notification", "")
+        except Exception:
+            tab_notification = ""
+
+        left = self.notification or tab_notification
+        self.query_one("#status-left", Label).update(left)
+        self.query_one("#status-right", Label).update(right)
 
     def update_status(self, left: str = "", right: str = "") -> None:
         self.query_one("#status-left", Label).update(left)

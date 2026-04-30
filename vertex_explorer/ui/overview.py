@@ -54,6 +54,7 @@ class OverviewTab(Vertical):
         self._run_offsets: dict[str, int] = {}
         self._current_schedule: str | None = None
         self._total_schedules: int = 0
+        self._visible_schedules: int = 0
         self._st_prev_col = None
         self._rt_name_col = None
 
@@ -82,7 +83,6 @@ class OverviewTab(Vertical):
         rt.cursor_type = "row"
 
         self.watch(rt, "scroll_y", self._on_runs_scroll_y)
-        self.reload()
 
     def focus_default(self) -> None:
         self.query_one("#schedules-table", _DataTable).focus()
@@ -194,7 +194,6 @@ class OverviewTab(Vertical):
         self._loading_runs = False
         self._update_dots()
         self._repopulate_runs()
-        self._update_status()
 
     def _update_dots(self) -> None:
         table = self.query_one("#schedules-table", _DataTable)
@@ -270,7 +269,8 @@ class OverviewTab(Vertical):
                     table.move_cursor(row=idx)
                     break
 
-        self._update_status(count)
+        self._visible_schedules = count
+        self.app._refresh_status(right=self._last_refresh.strftime("%H:%M:%S") if self._last_refresh else "")
 
     def _repopulate_runs(self) -> None:
         selected_schedule = self._selected_schedule
@@ -338,13 +338,8 @@ class OverviewTab(Vertical):
         except Exception:
             return None
 
-    def _update_status(self, visible_schedules: int | None = None) -> None:
-        if self._loading_schedules or self._loading_runs:
-            left = f"Fetching {'schedules' if self._loading_schedules else 'runs'}..."
-        elif visible_schedules is not None and visible_schedules != self._total_schedules:
-            left = f"{visible_schedules}/{self._total_schedules} schedules"
-        else:
-            left = f"{self._total_schedules} schedules"
-
-        right = self._last_refresh.strftime("%H:%M:%S") if self._last_refresh else ""
-        self.app.update_status(left=left, right=right)
+    @property
+    def notification(self) -> str:
+        if self._visible_schedules != self._total_schedules:
+            return f"{self._visible_schedules}/{self._total_schedules} schedules"
+        return f"{self._total_schedules} schedules"
