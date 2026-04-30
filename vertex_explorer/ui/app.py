@@ -20,6 +20,9 @@ class _Footer(Footer):
     async def recompose(self) -> None:
         await super().recompose()
         self.app._update_binding_highlights()
+        for key in self.query(FooterKey):
+            if key.action in self.app._persistent_pressed:
+                key.add_class("-pressed")
 
 
 class VertexExplorer(App):
@@ -41,6 +44,7 @@ class VertexExplorer(App):
     _loading_schedules: bool = False
     _loading_runs: bool = False
     _auth_granted: bool = False
+    _persistent_pressed: set[str] = set()
 
     # ── layout ────────────────────────────────────────────────────────────────
 
@@ -92,6 +96,7 @@ class VertexExplorer(App):
         self._flash_key("settings", auto_clear=False)
 
         def _on_dismiss(needs_refresh: bool) -> None:
+            self._persistent_pressed.discard("settings")
             for key in self.query(FooterKey):
                 if key.action == "settings":
                     key.remove_class("-pressed")
@@ -220,6 +225,8 @@ class VertexExplorer(App):
         return self.query_one(OverviewTab if self.tab == "overview" else TrackerTab)
 
     def _flash_key(self, action: str, *, auto_clear: bool = True) -> None:
+        if not auto_clear:
+            self._persistent_pressed.add(action)
         for key in self.query(FooterKey):
             if key.action == action:
                 key.add_class("-pressed")
