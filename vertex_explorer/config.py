@@ -1,4 +1,6 @@
+import json
 import logging
+from pathlib import Path
 
 import colorlog
 
@@ -8,15 +10,15 @@ colorlog.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
+_SETTINGS_PATH = Path.home() / ".config" / "vertex-explorer" / "settings.json"
 
 PROJECT = "martin-test-datalab"
 LOCATIONS = ["europe-west3", "europe-west4"]
 
-RUNS_DAYS = 28
-SCHEDULES_DAYS = 7
+RUNS_DAYS = 3
+SCHEDULES_DAYS = 3
 
 RUNS_PAGE_SIZE = 100
-
 RUN_STATE_STYLE = {
     "PIPELINE_STATE_SUCCEEDED": "green",
     "PIPELINE_STATE_RUNNING": "cyan",
@@ -26,32 +28,31 @@ RUN_STATE_STYLE = {
 }
 
 
-# result = fetch_all()
-#
-# LOOKBACK_DAYS = 7
-# PREFIXES = [
-#     "go-model-treebased-install-prediction",
-#     "tensorflow-install-prediction",
-#     "tensorflow-action-prediction",
-#     "tensorflow-audience-similarity",
-#     "tensorflow-win-price-prediction",
-# ]
-#
-#
-# ua_failed_runs = []
-# for region, runs in result["runs"].items():
-#     for run in runs:
-#         run_name = run.name.split("/")[-1]
-#
-#         if run.end_time and run.end_time < pendulum.now("UTC").add(days=-LOOKBACK_DAYS):
-#             continue
-#
-#         if run.state.name != "PIPELINE_STATE_FAILED":
-#             continue
-#
-#         if not any(run_name.startswith(p) for p in PREFIXES):
-#             continue
-#
-#         ua_failed_runs.append(run)
-#
-# print(len(ua_failed_runs))
+def load_settings() -> None:
+    global PROJECT, LOCATIONS, RUNS_DAYS, SCHEDULES_DAYS
+    try:
+        data = json.loads(_SETTINGS_PATH.read_text())
+    except Exception:
+        return
+    PROJECT = data.get("PROJECT", PROJECT)
+    LOCATIONS = data.get("LOCATIONS", LOCATIONS)
+    RUNS_DAYS = data.get("RUNS_DAYS", RUNS_DAYS)
+    SCHEDULES_DAYS = data.get("SCHEDULES_DAYS", SCHEDULES_DAYS)
+
+
+def save_settings() -> None:
+    _SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _SETTINGS_PATH.write_text(
+        json.dumps(
+            {
+                "PROJECT": PROJECT,
+                "LOCATIONS": LOCATIONS,
+                "RUNS_DAYS": RUNS_DAYS,
+                "SCHEDULES_DAYS": SCHEDULES_DAYS,
+            },
+            indent=2,
+        )
+    )
+
+
+load_settings()
