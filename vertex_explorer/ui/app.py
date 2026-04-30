@@ -19,7 +19,7 @@ from vertex_explorer.ui.tracker import TrackerTab
 class _Footer(Footer):
     async def recompose(self) -> None:
         await super().recompose()
-        self.app._update_binding_highlights()
+        self.app.update_binding_highlights()
         for key in self.query(FooterKey):
             if key.action in self.app._persistent_pressed:
                 key.add_class("-pressed")
@@ -233,7 +233,7 @@ class VertexExplorer(App):
                 if auto_clear:
                     self.set_timer(0.15, lambda k=key: k.remove_class("-pressed"))
 
-    def _update_binding_highlights(self) -> None:
+    def update_binding_highlights(self) -> None:
         toggled = {}
         if self.tab == "overview":
             tab = self.query_one(OverviewTab)

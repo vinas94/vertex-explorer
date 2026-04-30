@@ -98,18 +98,18 @@ class OverviewTab(Vertical):
 
     def watch_filter(self) -> None:
         self._repopulate_schedules()
-        self.app._update_binding_highlights()
+        self.app.update_binding_highlights()
 
     def action_toggle_region(self) -> None:
         cycle = dict(zip([None, *config.LOCATIONS], [*config.LOCATIONS, None]))
         self.region_ = cycle[self.region_]
         self._repopulate_schedules()
-        self.app._update_binding_highlights()
+        self.app.update_binding_highlights()
 
     def action_toggle_active(self) -> None:
         self.active = not self.active
         self._repopulate_schedules()
-        self.app._update_binding_highlights()
+        self.app.update_binding_highlights()
 
     def action_open_current(self) -> None:
         st = self.query_one("#schedules-table", _DataTable)
