@@ -48,6 +48,7 @@ class OverviewTab(Vertical):
         self._run_offsets: dict[str, int] = {}
         self._current_schedule: str | None = None
         self._total_schedules: int = 0
+        self._prev_col = None
 
     # ── layout ────────────────────────────────────────────────────────────────
 
@@ -65,7 +66,7 @@ class OverviewTab(Vertical):
         st.add_column("Status")
         st.add_column("Cron")
         st.add_column("Next Run")
-        st.add_column("Prev", width=7)
+        self._prev_col = st.add_column("Prev", width=7)
         st.add_column("Name")
         st.cursor_type = "row"
 
@@ -200,8 +201,17 @@ class OverviewTab(Vertical):
         all_runs = [r for rl in runs_by_loc.values() for r in rl]
         self._runs_by_schedule = build_runs_index(all_runs)
         self._loading_runs = False
-        self._repopulate_schedules()
+        self._update_dots()
         self._repopulate_runs()
+
+    def _update_dots(self) -> None:
+        table = self.query_one("#schedules-table", DataTable)
+        for row_key in table.rows:
+            dots = _run_dots(self._runs_by_schedule.get(row_key.value, []))
+            try:
+                table.update_cell(row_key, self._prev_col, dots)
+            except Exception:
+                pass
 
     def _on_error(self, msg: str) -> None:
         self._loading_schedules = False
