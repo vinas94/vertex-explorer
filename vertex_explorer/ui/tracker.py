@@ -15,6 +15,7 @@ from vertex_explorer.ui.formatters import (
     _fmt_name,
     _fmt_region,
     _fmt_time,
+    _run_dots,
 )
 
 
@@ -28,9 +29,15 @@ class _DataTable(DataTable):
 class TrackerTab(Vertical):
     BINDINGS = [
         Binding("r", "toggle_region", "Region"),
+        Binding("a", "toggle_running", "Running"),
+        Binding("d", "toggle_failed", "Failed"),
+        Binding("c", "toggle_cancelled", "Cancelled"),
     ]
 
     region_: reactive[str | None] = reactive(None)
+    show_running: reactive[bool] = reactive(False)
+    show_failed: reactive[bool] = reactive(False)
+    show_cancelled: reactive[bool] = reactive(False)
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -57,6 +64,21 @@ class TrackerTab(Vertical):
         self.repopulate()
         self.app.update_binding_highlights()
 
+    def action_toggle_running(self) -> None:
+        self.show_running = not self.show_running
+        self.repopulate()
+        self.app.update_binding_highlights()
+
+    def action_toggle_failed(self) -> None:
+        self.show_failed = not self.show_failed
+        self.repopulate()
+        self.app.update_binding_highlights()
+
+    def action_toggle_cancelled(self) -> None:
+        self.show_cancelled = not self.show_cancelled
+        self.repopulate()
+        self.app.update_binding_highlights()
+
     def action_open_current(self) -> None:
         t = self.query_one("#tracker-table", _DataTable)
         try:
@@ -72,7 +94,7 @@ class TrackerTab(Vertical):
     def repopulate(self) -> None:
         t = self.query_one("#tracker-table", _DataTable)
         t.clear(columns=True)
-        t.add_columns("Region", "Status", "Start", "End", "Duration", "Name")
+        t.add_columns("Region", "Status", "Cron", "Next Run", "Prev", "Start", "End", "Duration", "Name")
         runs = self._filtered_runs
         self._append_rows(t, runs[: config.RUNS_PAGE_SIZE])
         self._offset = config.RUNS_PAGE_SIZE
@@ -100,6 +122,8 @@ class TrackerTab(Vertical):
         self._offset += len(batch)
 
     def _append_rows(self, table: _DataTable, runs: list) -> None:
+        schedules_by_name = {s["name"]: s for s in self.app.schedules}
+        runs_by_schedule = self.app.runs_by_schedule
         cutoff_24h = pendulum.now("UTC").subtract(hours=24)
         for run in runs:
             state_name = run.state.name
@@ -111,8 +135,12 @@ class TrackerTab(Vertical):
             start = Text(_fmt_time(run.start_time), style="red" if recent_fail else "")
             end = Text(_fmt_time(run.end_time))
             duration = Text(_fmt_duration(run.start_time, run.end_time))
+            sched = schedules_by_name.get(run.schedule_name) if run.schedule_name else None
+            cron = sched["cron"] if sched else ""
+            next_run = _fmt_time(sched["nextRunTime"]) if sched else ""
+            prev = _run_dots(runs_by_schedule.get(run.schedule_name, [])) if run.schedule_name else ""
             name = Text(_fmt_name(run.name))
-            table.add_row(region, state, start, end, duration, name, key=run.name)
+            table.add_row(region, state, cron, next_run, prev, start, end, duration, name, key=run.name)
 
     @property
     def notification(self) -> str:
