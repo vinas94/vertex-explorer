@@ -9,7 +9,8 @@ from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
 from textual.widgets import DataTable, Input
 
-from vertex_explorer.config import LOCATIONS, RUN_STATE_STYLE, RUNS_PAGE_SIZE
+import vertex_explorer.config as config
+from vertex_explorer.config import RUN_STATE_STYLE, RUNS_PAGE_SIZE
 from vertex_explorer.filters import parse_filter
 from vertex_explorer.processor import build_runs_index, build_schedules
 from vertex_explorer.ui.formatters import (
@@ -100,7 +101,7 @@ class OverviewTab(Vertical):
         self.app._update_binding_highlights()
 
     def action_toggle_region(self) -> None:
-        cycle = dict(zip([None, *LOCATIONS], [*LOCATIONS, None]))
+        cycle = dict(zip([None, *config.LOCATIONS], [*config.LOCATIONS, None]))
         self.region_ = cycle[self.region_]
         self._repopulate_schedules()
         self.app._update_binding_highlights()
@@ -209,7 +210,7 @@ class OverviewTab(Vertical):
 
         count = 0
         table.clear()
-        region_rank = {loc: len(LOCATIONS) - i - 1 for i, loc in enumerate(LOCATIONS)}
+        region_rank = {loc: len(config.LOCATIONS) - i - 1 for i, loc in enumerate(config.LOCATIONS)}
 
         def _sort_key(s):
             return (
