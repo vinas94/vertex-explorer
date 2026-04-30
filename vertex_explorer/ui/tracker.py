@@ -91,16 +91,9 @@ class TrackerTab(Vertical):
             recent_fail = (
                 state_name == "PIPELINE_STATE_FAILED" and run.end_time and pendulum.instance(run.end_time) >= cutoff_24h
             )
-            region = _fmt_region(run.name) if run.name else ""
+            region = Text(_fmt_region(run.name) if run.name else "")
             start = Text(_fmt_time(run.start_time), style="red" if recent_fail else "")
             end = Text(_fmt_time(run.end_time))
             duration = Text(_fmt_duration(run.start_time, run.end_time))
-            name = self._schedule_name(run)
+            name = Text(_fmt_name(run.name))
             table.add_row(region, state, start, end, duration, name, key=run.name)
-
-    def _schedule_name(self, run) -> str:
-        names = self.app.schedule_names
-        if run.schedule_name and run.schedule_name in names:
-            name = names[run.schedule_name]
-            return name if name else _fmt_name(run.schedule_name)
-        return _fmt_name(run.name) if run.name else ""
