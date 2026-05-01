@@ -41,9 +41,9 @@ class OverviewTab(Vertical):
         Binding("left", "focus_left", show=False),
     ]
 
-    active: reactive[bool] = reactive(False)
-    region_: reactive[str | None] = reactive(None)
     filter: reactive[str] = reactive("", init=False)
+    region_: reactive[str | None] = reactive(None)
+    active: reactive[bool] = reactive(False)
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)

@@ -277,6 +277,7 @@ class VertexExplorer(App):
         elif self.tab == "tracker":
             tab = self.query_one(TrackerTab)
             toggled = {
+                "focus_filter": bool(tab.filter),
                 "toggle_region": tab.region_ is not None,
                 "toggle_running": tab.show_running,
                 "toggle_failed": tab.show_failed,

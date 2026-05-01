@@ -2,11 +2,11 @@ import webbrowser
 
 import pendulum
 from rich.text import Text
-from textual import events
+from textual import events, on
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
-from textual.widgets import DataTable
+from textual.widgets import DataTable, Label, TextArea
 
 import vertex_explorer.config as config
 from vertex_explorer.ui.formatters import (
@@ -27,6 +27,7 @@ class _DataTable(DataTable):
 
 class TrackerTab(Vertical):
     BINDINGS = [
+        Binding("f", "focus_filter", "Filter"),
         Binding("r", "toggle_region", "Region"),
         Binding("a", "toggle_running", "Running"),
         Binding("d", "toggle_failed", "Failed"),
@@ -34,6 +35,7 @@ class TrackerTab(Vertical):
         Binding("O", "open_schedule", show=False),
     ]
 
+    filter: reactive[str] = reactive("", init=False)
     region_: reactive[str | None] = reactive(None)
     show_running: reactive[bool] = reactive(False)
     show_failed: reactive[bool] = reactive(False)
@@ -46,10 +48,11 @@ class TrackerTab(Vertical):
     # ── layout ────────────────────────────────────────────────────────────────
 
     def compose(self):
-        yield Horizontal(
-            Vertical(id="tracker-filters"),
-            _DataTable(id="tracker-table", cursor_foreground_priority="renderable"),
-        )
+        with Horizontal():
+            with Vertical(id="tracker-left"):
+                yield Label("Filters")
+                yield TextArea(id="tracker-filters")
+            yield _DataTable(id="tracker-table", cursor_foreground_priority="renderable")
 
     def on_mount(self) -> None:
         t = self.query_one("#tracker-table", _DataTable)
@@ -60,6 +63,9 @@ class TrackerTab(Vertical):
         self.query_one("#tracker-table", _DataTable).focus()
 
     # ── actions ───────────────────────────────────────────────────────────────
+
+    def action_focus_filter(self) -> None:
+        self.query_one("#tracker-filters", TextArea).focus()
 
     def action_toggle_region(self) -> None:
         cycle = dict(zip([None, *config.REGIONS], [*config.REGIONS, None]))
@@ -103,7 +109,9 @@ class TrackerTab(Vertical):
             pass
 
     def escape(self) -> None:
-        pass
+        filters = self.query_one("#tracker-filters", TextArea)
+        if filters.has_focus:
+            self.focus_default()
 
     def repopulate(self) -> None:
         t = self.query_one("#tracker-table", _DataTable)
