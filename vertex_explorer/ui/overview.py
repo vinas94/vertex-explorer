@@ -29,7 +29,6 @@ class _FilterInput(ClickableInput):
 class _DataTable(DataTable):
     def _on_resize(self, event: events.Resize) -> None:
         super()._on_resize(event)
-        self._clear_caches()
         self.refresh()
 
 
@@ -52,6 +51,7 @@ class OverviewTab(Vertical):
         self._run_offsets: dict[str, int] = {}
         self._current_schedule: str | None = None
         self._st_prev_col = None
+        self._rt_name_col = None
 
     # ── layout ────────────────────────────────────────────────────────────────
 
@@ -129,6 +129,7 @@ class OverviewTab(Vertical):
 
     def reset(self) -> None:
         self._current_schedule = None
+        self._rt_name_col = None
         self.query_one("#schedules-table", _DataTable).clear(columns=True)
         self.query_one("#runs-table", _DataTable).clear(columns=True)
 
@@ -241,8 +242,10 @@ class OverviewTab(Vertical):
         if not selected_schedule:
             self._current_schedule = None
             runs_table.remove_class("-scheduled")
-            runs_table.clear(columns=True)
-            runs_table.add_columns("Status", "Start", "Duration")
+            if not runs_table.columns:
+                runs_table.add_columns("Status", "Start", "Duration")
+            else:
+                runs_table.clear()
             return
 
         _, filter_terms = parse_filter(self.filter)
@@ -250,10 +253,18 @@ class OverviewTab(Vertical):
         self._current_schedule = selected_schedule
 
         runs_table.set_class(not is_unscheduled, "-scheduled")
-        runs_table.clear(columns=True)
-        runs_table.add_columns("Status", "Start", "Duration")
-        if is_unscheduled:
-            runs_table.add_column("Name")
+
+        if not runs_table.columns:
+            runs_table.add_columns("Status", "Start", "Duration")
+            self._rt_name_col = None
+
+        runs_table.clear()
+
+        if is_unscheduled and self._rt_name_col is None:
+            self._rt_name_col = runs_table.add_column("Name")
+        elif not is_unscheduled and self._rt_name_col is not None:
+            runs_table.remove_column(self._rt_name_col)
+            self._rt_name_col = None
 
         all_runs = self.app.runs_by_schedule.get(selected_schedule, [])
         if is_unscheduled:
