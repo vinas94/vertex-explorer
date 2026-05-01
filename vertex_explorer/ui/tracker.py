@@ -9,6 +9,7 @@ from textual.reactive import reactive
 from textual.widgets import DataTable, Label, TextArea
 
 import vertex_explorer.config as config
+from vertex_explorer.filters import parse_filter
 from vertex_explorer.ui.formatters import (
     _console_url,
     _fmt_duration,
@@ -108,6 +109,14 @@ class TrackerTab(Vertical):
         except Exception:
             pass
 
+    @on(TextArea.Changed, "#tracker-filters")
+    def _on_filter_changed(self, event: TextArea.Changed) -> None:
+        self.filter = event.text_area.text
+
+    def watch_filter(self) -> None:
+        self.repopulate()
+        self.app.update_binding_highlights()
+
     def escape(self) -> None:
         filters = self.query_one("#tracker-filters", TextArea)
         if filters.has_focus:
@@ -193,6 +202,10 @@ class TrackerTab(Vertical):
     @property
     def _filtered_runs(self) -> list:
         runs = self.app.runs
+        predicates = [parse_filter(line)[0] for line in self.filter.splitlines() if line.strip()]
+        predicates = [p for p in predicates if p]
+        if predicates:
+            runs = [r for r in runs if r.name and any(p(_fmt_name(r.name)) for p in predicates)]
         if self.region_:
             runs = [r for r in runs if r.name and r.name.split("/")[3] == self.region_]
         if self.show_running or self.show_failed or self.show_cancelled:
