@@ -143,9 +143,10 @@ class OverviewTab(Vertical):
         self.focus_default()
 
     @on(DataTable.RowHighlighted, "#schedules-table")
-    def _on_schedule_highlighted(self, event: DataTable.RowHighlighted) -> None:
+    @on(DataTable.RowSelected, "#schedules-table")
+    def _on_schedule_highlighted(self, event: DataTable.RowHighlighted | DataTable.RowSelected) -> None:
         if event.row_key.value != self._current_schedule:
-            self.repopulate_runs()
+            self.repopulate_runs(event.row_key.value)
 
     @on(DataTable.RowHighlighted, "#runs-table")
     def _on_run_highlighted(self, event: DataTable.RowHighlighted) -> None:
@@ -224,8 +225,9 @@ class OverviewTab(Vertical):
 
         self.app.refresh_status(right=self.app.last_refresh.strftime("%H:%M:%S") if self.app.last_refresh else "")
 
-    def repopulate_runs(self) -> None:
-        selected_schedule = self._selected_schedule
+    def repopulate_runs(self, selected_schedule: str | None = None) -> None:
+        if selected_schedule is None:
+            selected_schedule = self._selected_schedule
 
         runs_table = self.query_one("#runs-table", _DataTable)
 
@@ -235,6 +237,13 @@ class OverviewTab(Vertical):
                 self._run_cursors[self._current_schedule] = key
         except Exception:
             pass
+
+        if not selected_schedule:
+            self._current_schedule = None
+            runs_table.remove_class("-scheduled")
+            runs_table.clear(columns=True)
+            runs_table.add_columns("Status", "Start", "Duration")
+            return
 
         _, filter_terms = parse_filter(self.filter)
         is_unscheduled = selected_schedule.endswith("__unscheduled__")
