@@ -230,28 +230,16 @@ class OverviewTab(Vertical):
         if selected_schedule is None:
             selected_schedule = self._selected_schedule
 
+        if not selected_schedule:
+            self._current_schedule = None
+            return
+
         runs_table = self.query_one("#runs-table", _DataTable)
-
-        try:
-            key = runs_table.coordinate_to_cell_key(runs_table.cursor_coordinate).row_key.value
-            if key:
-                self._run_cursors[self._current_schedule] = key
-        except Exception:
-            pass
-
         if not runs_table.columns:
             runs_table.add_columns("Status", "Start", "Duration")
         runs_table.clear()
 
-        if not selected_schedule:
-            self._current_schedule = None
-            runs_table.remove_class("-scheduled")
-            return
-
-        _, filter_terms = parse_filter(self.filter)
         is_unscheduled = selected_schedule.endswith("__unscheduled__")
-        self._current_schedule = selected_schedule
-
         runs_table.set_class(not is_unscheduled, "-scheduled")
 
         if is_unscheduled and self._rt_name_col is None:
@@ -260,11 +248,22 @@ class OverviewTab(Vertical):
             runs_table.remove_column(self._rt_name_col)
             self._rt_name_col = None
 
-        all_runs = self.app.runs_by_schedule.get(selected_schedule, [])
-        if is_unscheduled:
-            all_runs = self._filtered_unscheduled_runs(selected_schedule)
-        self._append_run_rows(runs_table, all_runs[: config.RUNS_PAGE_SIZE], is_unscheduled, filter_terms)
+        runs = self.app.runs_by_schedule.get(selected_schedule, [])
+
+        predicate, filter_terms = parse_filter(self.filter)
+        if is_unscheduled and predicate:
+            runs = [run for run in runs if run.name and predicate(_fmt_name(run.name))]
+        self._append_run_rows(runs_table, runs[: config.RUNS_PAGE_SIZE], is_unscheduled, filter_terms)
         self._run_offsets[selected_schedule] = config.RUNS_PAGE_SIZE
+
+        try:
+            key = runs_table.coordinate_to_cell_key(runs_table.cursor_coordinate).row_key.value
+            if key:
+                self._run_cursors[self._current_schedule] = key
+        except Exception:
+            pass
+
+        self._current_schedule = selected_schedule
 
         if selected_schedule in self._run_cursors:
             saved = self._run_cursors[selected_schedule]
