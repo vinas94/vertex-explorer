@@ -22,7 +22,6 @@ from vertex_explorer.ui.formatters import (
 class _DataTable(DataTable):
     def _on_resize(self, event: events.Resize) -> None:
         super()._on_resize(event)
-        self._clear_caches()
         self.refresh()
 
 
@@ -32,6 +31,7 @@ class TrackerTab(Vertical):
         Binding("a", "toggle_running", "Running"),
         Binding("d", "toggle_failed", "Failed"),
         Binding("c", "toggle_cancelled", "Cancelled"),
+        Binding("O", "open_schedule", show=False),
     ]
 
     region_: reactive[str | None] = reactive(None)
@@ -154,6 +154,17 @@ class TrackerTab(Vertical):
 
     @property
     def _filtered_runs(self) -> list:
-        if not self.region_:
-            return self.app.runs
-        return [r for r in self.app.runs if r.name and r.name.split("/")[3] == self.region_]
+        runs = self.app.runs
+        if self.region_:
+            runs = [r for r in runs if r.name and r.name.split("/")[3] == self.region_]
+        if self.show_running or self.show_failed or self.show_cancelled:
+            allowed = set()
+            if self.show_running:
+                allowed.add("PIPELINE_STATE_RUNNING")
+            if self.show_failed:
+                allowed.add("PIPELINE_STATE_FAILED")
+            if self.show_cancelled:
+                allowed.add("PIPELINE_STATE_CANCELLED")
+                allowed.add("PIPELINE_STATE_CANCELLING")
+            runs = [r for r in runs if r.state.name in allowed]
+        return runs
