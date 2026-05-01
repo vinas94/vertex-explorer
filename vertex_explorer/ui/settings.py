@@ -132,7 +132,8 @@ class SettingsScreen(ModalScreen[bool]):
             self.set_focus(None)
         self.cursor = _GRID_ORDER[(_GRID_ORDER.index(self.cursor) + 1) % len(_GRID_ORDER)]
 
-    def on_input_submitted(self, _: Input.Submitted) -> None:
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        event.input.value = event.input.value.strip()
         self.set_focus(None)
 
     def watch_cursor(self) -> None:
