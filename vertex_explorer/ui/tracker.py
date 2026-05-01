@@ -93,11 +93,27 @@ class TrackerTab(Vertical):
 
     def repopulate(self) -> None:
         t = self.query_one("#tracker-table", _DataTable)
+
+        try:
+            saved_key = t.coordinate_to_cell_key(t.cursor_coordinate).row_key.value
+        except Exception:
+            saved_key = None
+
+        hover = t.hover_coordinate
         t.clear(columns=True)
+        t.hover_coordinate = hover
         t.add_columns("Region", "Status", "Cron", "Next Run", "Prev", "Start", "End", "Duration", "Name")
+
         runs = self._filtered_runs
         self._append_rows(t, runs[: config.RUNS_PAGE_SIZE])
         self._offset = config.RUNS_PAGE_SIZE
+
+        if saved_key:
+            for idx, row_key in enumerate(t.rows):
+                if row_key.value == saved_key:
+                    t.move_cursor(row=idx)
+                    break
+
         self.app.refresh_status()
 
     def reset(self) -> None:
