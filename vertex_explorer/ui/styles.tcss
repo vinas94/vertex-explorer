@@ -1,3 +1,4 @@
+OverviewTab { height: 1fr; }
 #titlebar { height: 1; background: $primary-darken-1; padding: 0 1; }
 #status-left { width: 1fr; content-align: left middle; }
 #tab-indicator { width: 1fr; align: center middle; }
@@ -6,12 +7,6 @@
 #status-center { width: 2fr; content-align: center middle; text-style: bold; }
 #status-right { width: 2fr; content-align: right middle; }
 #filter-input { height: 1; border: none; padding: 0 1; }
-OverviewTab { height: 1fr; }
-TrackerTab { height: 1fr; display: none; }
-#tracker-left { width: 23%; padding: 1 3; }
-#tracker-filters .text-area--cursor-line { background: $surface; }
-#tracker-filters { border: none; }
-#tracker-filters:focus { border: none; }
 #content { height: 1fr; }
 #schedules-table { width: 1fr; overflow-x: hidden; }
 #runs-table { width: 23%; overflow-x: hidden; }
@@ -20,7 +15,12 @@ FooterKey.-toggled .footer-key--key { background: $accent; color: $text; }
 FooterKey.-toggled .footer-key--description { color: $accent; }
 FooterKey.-pressed .footer-key--key { background: $accent; color: $text; }
 FooterKey.-pressed .footer-key--description { color: $accent; }
-Toast { width: auto; }
+
+TrackerTab { height: 1fr; display: none; }
+#tracker-left { width: 20%; padding: 2 3; }
+#tracker-filters .text-area--cursor-line { background: $surface; }
+#tracker-filters { border: none; }
+#tracker-filters:focus { border: none; }
 
 SettingsScreen { align: center middle; }
 #settings-dialog { width: 63; height: auto; background: $surface; border: solid $primary; padding: 1 2; }
@@ -38,6 +38,7 @@ SettingsScreen { align: center middle; }
 .settings-col:last-of-type .setting-row Input { width: 1fr; height: 1; border: none; padding: 0; }
 Input.-cursor { background: $accent 30%; }
 .setting-tick { height: 1; width: 3; padding: 0; background: transparent; }
+Toast { width: auto; }
 
 /*
 First settings column width = 19 = 16 (label) + 3 (input)
