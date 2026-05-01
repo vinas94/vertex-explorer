@@ -79,6 +79,7 @@ class OverviewTab(Vertical):
 
     def watch_filter(self) -> None:
         self.repopulate_schedules()
+        self.repopulate_runs()
         self.app.update_binding_highlights()
 
     def action_toggle_region(self) -> None:

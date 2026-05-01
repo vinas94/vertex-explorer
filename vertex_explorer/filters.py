@@ -50,13 +50,19 @@ class _Parser:
     def parse(self) -> tuple:
         if self._cur().kind == _Tok.EOF:
             return None, []
-        return self._expr()
+        pred, terms = self._expr()
+        return pred, terms
 
     def _expr(self) -> tuple:
         pred, terms = self._term()
         while self._cur().kind == _Tok.OR:
             self._advance()
             rp, rt = self._term()
+            if rp is None:
+                continue
+            if pred is None:
+                pred, terms = rp, rt
+                continue
             lp = pred
             pred = lambda s, lp=lp, rp=rp: lp(s) or rp(s)
             terms = terms + rt
@@ -68,6 +74,11 @@ class _Parser:
             if self._cur().kind == _Tok.AND:
                 self._advance()
             rp, rt = self._factor()
+            if rp is None:
+                continue
+            if pred is None:
+                pred, terms = rp, rt
+                continue
             lp = pred
             pred = lambda s, lp=lp, rp=rp: lp(s) and rp(s)
             terms = terms + rt
@@ -84,9 +95,11 @@ class _Parser:
         elif cur.kind == _Tok.WORD:
             w = self._advance().val.lower()
             return lambda s, w=w: w in s.lower(), [w]
+        elif cur.kind in (_Tok.RP, _Tok.EOF):
+            return None, []
         else:
             self._advance()
-            return lambda s: True, []
+            return None, []
 
 
 def parse_filter(text: str) -> tuple:

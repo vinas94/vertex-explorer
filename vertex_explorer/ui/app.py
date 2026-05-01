@@ -192,6 +192,7 @@ class VertexExplorer(App):
         )
         self.set_notification("")
         overview = self.query_one(OverviewTab)
+        overview.repopulate_schedules()
         overview.update_dots()
         overview.repopulate_runs()
         self.query_one(TrackerTab).repopulate()
