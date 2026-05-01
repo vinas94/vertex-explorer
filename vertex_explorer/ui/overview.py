@@ -170,7 +170,9 @@ class OverviewTab(Vertical):
             saved_key = None
 
         with table.prevent(DataTable.RowHighlighted, DataTable.RowSelected):
+            hover = table.hover_coordinate
             table.clear(columns=True)
+            table.hover_coordinate = hover
             table.add_column("Region")
             table.add_column("Status")
             table.add_column("Cron")
