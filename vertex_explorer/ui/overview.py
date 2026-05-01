@@ -242,7 +242,7 @@ class OverviewTab(Vertical):
         runs_table.clear()
 
         is_unscheduled = selected_schedule.endswith("__unscheduled__")
-        runs_table.set_class(not is_unscheduled, "-scheduled")
+        runs_table.set_class(is_unscheduled, "-unscheduled")
 
         if is_unscheduled and self._rt_name_col is None:
             self._rt_name_col = runs_table.add_column("Name")

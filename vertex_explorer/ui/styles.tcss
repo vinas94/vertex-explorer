@@ -10,8 +10,8 @@ OverviewTab { height: 1fr; }
 TrackerTab { height: 1fr; display: none; }
 #content { height: 1fr; }
 #schedules-table { width: 1fr; overflow-x: hidden; }
-#runs-table { width: 1fr; overflow-x: hidden; }
-#runs-table.-scheduled { width: 23%; }
+#runs-table { width: 23%; overflow-x: hidden; }
+#runs-table.-unscheduled { width: 1fr; }
 FooterKey.-toggled .footer-key--key { background: $accent; color: $text; }
 FooterKey.-toggled .footer-key--description { color: $accent; }
 FooterKey.-pressed .footer-key--key { background: $accent; color: $text; }

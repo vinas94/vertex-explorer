@@ -88,6 +88,17 @@ class TrackerTab(Vertical):
         except Exception:
             pass
 
+    def action_open_schedule(self) -> None:
+        t = self.query_one("#tracker-table", _DataTable)
+        try:
+            run_name = t.coordinate_to_cell_key(t.cursor_coordinate).row_key.value
+            if run_name:
+                run = self.app.runs_by_name.get(run_name)
+                if run and run.schedule_name and not run.schedule_name.endswith("__unscheduled__"):
+                    webbrowser.open(_console_url(run.schedule_name, "schedules"))
+        except Exception:
+            pass
+
     def escape(self) -> None:
         pass
 

@@ -48,6 +48,7 @@ class VertexExplorer(App):
     schedule_names: dict[str, str] = {}
     runs: list = []
     runs_by_schedule: dict[str, list] = {}
+    runs_by_name: dict[str, object] = {}
 
     loading_schedules: bool = False
     loading_runs: bool = False
@@ -98,6 +99,7 @@ class VertexExplorer(App):
         self.schedule_names = {}
         self.runs = []
         self.runs_by_schedule = {}
+        self.runs_by_name = {}
         self.query_one(OverviewTab).reset()
         self.query_one(TrackerTab).reset()
         self.fetch_data()
@@ -185,6 +187,7 @@ class VertexExplorer(App):
         self.loading_runs = False
         all_runs = [r for rl in runs_by_loc.values() for r in rl]
         self.runs_by_schedule = build_runs_index(all_runs)
+        self.runs_by_name = {r.name: r for r in all_runs if r.name}
         self.runs = sorted(
             all_runs,
             key=lambda r: r.start_time or pendulum.DateTime.min,
