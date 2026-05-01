@@ -4,7 +4,7 @@ import pendulum
 from rich.text import Text
 from textual import events
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
 from textual.widgets import DataTable
 
@@ -46,7 +46,10 @@ class TrackerTab(Vertical):
     # ── layout ────────────────────────────────────────────────────────────────
 
     def compose(self):
-        yield _DataTable(id="tracker-table", cursor_foreground_priority="renderable")
+        yield Horizontal(
+            Vertical(id="tracker-filters"),
+            _DataTable(id="tracker-table", cursor_foreground_priority="renderable"),
+        )
 
     def on_mount(self) -> None:
         t = self.query_one("#tracker-table", _DataTable)
