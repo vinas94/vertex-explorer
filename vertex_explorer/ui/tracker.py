@@ -111,7 +111,7 @@ class TrackerTab(Vertical):
 
     @on(TextArea.Changed, "#tracker-filters")
     def _on_filter_changed(self, event: TextArea.Changed) -> None:
-        self.filter = event.text_area.text
+        self.filter = event.text_area.text.strip()
 
     def watch_filter(self) -> None:
         self.repopulate()
@@ -120,7 +120,15 @@ class TrackerTab(Vertical):
     def escape(self) -> None:
         filters = self.query_one("#tracker-filters", TextArea)
         if filters.has_focus:
+            self._strip_filters()
             self.focus_default()
+
+    def _strip_filters(self) -> None:
+        filters = self.query_one("#tracker-filters", TextArea)
+        stripped = "\n".join(line.strip() for line in filters.text.splitlines()).strip()
+        if stripped != filters.text:
+            filters.load_text(stripped)
+        self.filter = stripped
 
     def repopulate(self) -> None:
         t = self.query_one("#tracker-table", _DataTable)
