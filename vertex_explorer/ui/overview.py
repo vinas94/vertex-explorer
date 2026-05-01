@@ -186,7 +186,13 @@ class OverviewTab(Vertical):
                 s.get("nextRunTime") or pendulum.DateTime.min,
             )
 
-        synthetic_scheds = [s for s in self.app.schedules if s.get("_synthetic")]
+        synthetic_scheds = [
+            schedule
+            for schedule in self.app.schedules
+            if schedule.get("_synthetic")
+            and (not self.region_ or schedule["name"].split("/")[3] == self.region_)
+            and self._filtered_unscheduled_runs(schedule["name"])
+        ]
         for sched in sorted(self._filtered_schedules + synthetic_scheds, key=_sort_key, reverse=True):
             name = sched["name"]
             state = sched.get("state", "")
@@ -230,6 +236,7 @@ class OverviewTab(Vertical):
         except Exception:
             pass
 
+        _, filter_terms = parse_filter(self.filter)
         is_unscheduled = selected_schedule.endswith("__unscheduled__")
         self._current_schedule = selected_schedule
 
@@ -240,7 +247,9 @@ class OverviewTab(Vertical):
             runs_table.add_column("Name")
 
         all_runs = self.app.runs_by_schedule.get(selected_schedule, [])
-        self._append_run_rows(runs_table, all_runs[: config.RUNS_PAGE_SIZE], is_unscheduled)
+        if is_unscheduled:
+            all_runs = self._filtered_unscheduled_runs(selected_schedule)
+        self._append_run_rows(runs_table, all_runs[: config.RUNS_PAGE_SIZE], is_unscheduled, filter_terms)
         self._run_offsets[selected_schedule] = config.RUNS_PAGE_SIZE
 
         if selected_schedule in self._run_cursors:
@@ -252,15 +261,29 @@ class OverviewTab(Vertical):
 
     def _load_more_runs(self) -> None:
         selected = self._current_schedule
-        all_runs = self.app.runs_by_schedule.get(selected, [])
+        is_unscheduled = selected.endswith("__unscheduled__")
+        _, filter_terms = parse_filter(self.filter)
+        all_runs = (
+            self._filtered_unscheduled_runs(selected) if is_unscheduled else self.app.runs_by_schedule.get(selected, [])
+        )
         offset = self._run_offsets.get(selected, 0)
         batch = all_runs[offset : offset + config.RUNS_PAGE_SIZE]
         if not batch:
             return
-        is_unscheduled = selected.endswith("__unscheduled__")
         table = self.query_one("#runs-table", _DataTable)
-        self._append_run_rows(table, batch, is_unscheduled)
+        self._append_run_rows(table, batch, is_unscheduled, filter_terms)
         self._run_offsets[selected] = offset + len(batch)
+
+    def _filtered_unscheduled_runs(self, schedule_name: str | None) -> list:
+        if not schedule_name:
+            return []
+
+        runs = self.app.runs_by_schedule.get(schedule_name, [])
+        predicate, _ = parse_filter(self.filter)
+        if not predicate:
+            return runs
+
+        return [run for run in runs if run.name and predicate(_fmt_name(run.name))]
 
     def update_dots(self) -> None:
         table = self.query_one("#schedules-table", _DataTable)
@@ -269,7 +292,7 @@ class OverviewTab(Vertical):
             table.update_cell(row_key, self._st_prev_col, dots)
 
     @staticmethod
-    def _append_run_rows(table: _DataTable, runs: list, is_unscheduled: bool) -> None:
+    def _append_run_rows(table: _DataTable, runs: list, is_unscheduled: bool, filter_terms: list[str]) -> None:
         cutoff_24h = pendulum.now("UTC").subtract(hours=24)
         for run in runs:
             state_name = run.state.name
@@ -279,7 +302,10 @@ class OverviewTab(Vertical):
             )
             start = Text(_fmt_time(run.start_time), style="red" if recent_fail else "")
             duration = Text(_fmt_duration(run.start_time, run.end_time))
-            extra = (Text(_fmt_name(run.name)),) if is_unscheduled else ()
+            extra = ()
+            if is_unscheduled:
+                run_name = _fmt_name(run.name)
+                extra = (_highlight(run_name, filter_terms) if filter_terms else Text(run_name),)
             table.add_row(state, start, duration, *extra, key=run.name)
 
     @property
