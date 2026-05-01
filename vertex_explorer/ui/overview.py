@@ -138,10 +138,12 @@ class OverviewTab(Vertical):
 
     @on(Input.Changed, "#filter-input")
     def _on_filter_changed(self, event: Input.Changed) -> None:
-        self.filter = event.value
+        self.filter = event.value.strip()
 
     @on(Input.Submitted, "#filter-input")
     def _on_filter_submitted(self, _: Input.Submitted) -> None:
+        fi = self.query_one("#filter-input", _FilterInput)
+        fi.value = fi.value.strip()
         self.focus_default()
 
     @on(DataTable.RowHighlighted, "#schedules-table")
