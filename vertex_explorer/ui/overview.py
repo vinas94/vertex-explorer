@@ -121,6 +121,7 @@ class OverviewTab(Vertical):
     def escape(self) -> None:
         fi = self.query_one("#filter-input", _FilterInput)
         if fi.has_focus:
+            fi.value = fi.value.strip()
             self.focus_default()
 
     def repopulate(self) -> None:
