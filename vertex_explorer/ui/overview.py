@@ -239,13 +239,13 @@ class OverviewTab(Vertical):
         except Exception:
             pass
 
+        if not runs_table.columns:
+            runs_table.add_columns("Status", "Start", "Duration")
+        runs_table.clear()
+
         if not selected_schedule:
             self._current_schedule = None
             runs_table.remove_class("-scheduled")
-            if not runs_table.columns:
-                runs_table.add_columns("Status", "Start", "Duration")
-            else:
-                runs_table.clear()
             return
 
         _, filter_terms = parse_filter(self.filter)
@@ -253,12 +253,6 @@ class OverviewTab(Vertical):
         self._current_schedule = selected_schedule
 
         runs_table.set_class(not is_unscheduled, "-scheduled")
-
-        if not runs_table.columns:
-            runs_table.add_columns("Status", "Start", "Duration")
-            self._rt_name_col = None
-
-        runs_table.clear()
 
         if is_unscheduled and self._rt_name_col is None:
             self._rt_name_col = runs_table.add_column("Name")
