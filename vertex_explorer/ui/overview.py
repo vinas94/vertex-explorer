@@ -162,69 +162,69 @@ class OverviewTab(Vertical):
     # ── rendering ─────────────────────────────────────────────────────────────
 
     def repopulate_schedules(self) -> None:
-        runs_by_schedule = self.app.runs_by_schedule
         table = self.query_one("#schedules-table", _DataTable)
-        _, filter_terms = parse_filter(self.filter)
 
         try:
             saved_key = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
         except Exception:
             saved_key = None
 
-        table.clear(columns=True)
-        table.add_column("Region")
-        table.add_column("Status")
-        table.add_column("Cron")
-        table.add_column("Next Run")
-        self._st_prev_col = table.add_column("Prev", width=5)
-        table.add_column("Name")
+        with table.prevent(DataTable.RowHighlighted, DataTable.RowSelected):
+            table.clear(columns=True)
+            table.add_column("Region")
+            table.add_column("Status")
+            table.add_column("Cron")
+            table.add_column("Next Run")
+            self._st_prev_col = table.add_column("Prev", width=5)
+            table.add_column("Name")
 
-        region_rank = {loc: len(config.REGIONS) - i - 1 for i, loc in enumerate(config.REGIONS)}
+            def _sort_key(s):
+                region_rank = {loc: len(config.REGIONS) - i - 1 for i, loc in enumerate(config.REGIONS)}
+                return (
+                    1 if s.get("_synthetic") else 0,
+                    region_rank.get(s["name"].split("/")[3], -1),
+                    s.get("nextRunTime") or pendulum.DateTime.min,
+                )
 
-        def _sort_key(s):
-            return (
-                1 if s.get("_synthetic") else 0,
-                region_rank.get(s["name"].split("/")[3], -1),
-                s.get("nextRunTime") or pendulum.DateTime.min,
-            )
+            synthetic_scheds = [
+                schedule
+                for schedule in self.app.schedules
+                if schedule.get("_synthetic")
+                and (not self.region_ or schedule["name"].split("/")[3] == self.region_)
+                and self._filtered_unscheduled_runs(schedule["name"])
+            ]
+            for sched in sorted(self._filtered_schedules + synthetic_scheds, key=_sort_key, reverse=True):
+                name = sched["name"]
+                state = sched.get("state", "")
+                display_name = sched.get("display_name", "")
+                synthetic = sched.get("_synthetic")
 
-        synthetic_scheds = [
-            schedule
-            for schedule in self.app.schedules
-            if schedule.get("_synthetic")
-            and (not self.region_ or schedule["name"].split("/")[3] == self.region_)
-            and self._filtered_unscheduled_runs(schedule["name"])
-        ]
-        for sched in sorted(self._filtered_schedules + synthetic_scheds, key=_sort_key, reverse=True):
-            name = sched["name"]
-            state = sched.get("state", "")
-            display_name = sched.get("display_name", "")
-            synthetic = sched.get("_synthetic")
+                _, filter_terms = parse_filter(self.filter)
+                if synthetic:
+                    name_cell = Text(display_name, style="italic dim")
+                elif filter_terms:
+                    name_cell = _highlight(display_name, filter_terms)
+                else:
+                    name_cell = display_name
 
-            if synthetic:
-                name_cell = Text(display_name, style="italic dim")
-            elif filter_terms:
-                name_cell = _highlight(display_name, filter_terms)
-            else:
-                name_cell = display_name
+                runs_by_schedule = self.app.runs_by_schedule
+                table.add_row(
+                    _fmt_region(name),
+                    Text(state, style="green" if state == "ACTIVE" else "dim" if not synthetic else ""),
+                    sched.get("cron", ""),
+                    _fmt_time(sched.get("nextRunTime")),
+                    _run_dots(runs_by_schedule.get(name, [])),
+                    name_cell,
+                    key=name,
+                )
 
-            table.add_row(
-                _fmt_region(name),
-                Text(state, style="green" if state == "ACTIVE" else "dim" if not synthetic else ""),
-                sched.get("cron", ""),
-                _fmt_time(sched.get("nextRunTime")),
-                _run_dots(runs_by_schedule.get(name, [])),
-                name_cell,
-                key=name,
-            )
+            if saved_key:
+                for idx, row_key in enumerate(table.rows):
+                    if row_key.value == saved_key:
+                        table.move_cursor(row=idx)
+                        break
 
-        if saved_key:
-            for idx, row_key in enumerate(table.rows):
-                if row_key.value == saved_key:
-                    table.move_cursor(row=idx)
-                    break
-
-        self.app.refresh_status(right=self.app.last_refresh.strftime("%H:%M:%S") if self.app.last_refresh else "")
+            self.app.refresh_status(right=self.app.last_refresh.strftime("%H:%M:%S") if self.app.last_refresh else "")
 
     def repopulate_runs(self, selected_schedule: str | None = None) -> None:
         if selected_schedule is None:
