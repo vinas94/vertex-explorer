@@ -1,5 +1,3 @@
-import webbrowser
-
 import pendulum
 from rich.text import Text
 from textual import on
@@ -9,15 +7,7 @@ from textual.reactive import reactive
 
 import vertex_explorer.config as config
 from vertex_explorer.filters import parse_filter
-from vertex_explorer.ui.formatters import (
-    console_url,
-    fmt_duration,
-    fmt_name,
-    fmt_region,
-    fmt_time,
-    highlight,
-    run_dots,
-)
+from vertex_explorer.ui.formatters import fmt_duration, fmt_name, fmt_region, fmt_time, highlight, run_dots
 from vertex_explorer.ui.widgets import DataTable, Input
 
 
@@ -84,21 +74,6 @@ class OverviewTab(Vertical):
         self.active = not self.active
         self.repopulate_schedules()
         self.app.update_binding_highlights()
-
-    def action_open_current(self) -> None:
-        st = self.query_one("#schedules-table", DataTable)
-        rt = self.query_one("#runs-table", DataTable)
-        try:
-            if st.has_focus:
-                name = st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
-                if name and not name.endswith("__unscheduled__"):
-                    webbrowser.open(console_url(name, "schedules"))
-            elif rt.has_focus:
-                name = rt.coordinate_to_cell_key(rt.cursor_coordinate).row_key.value
-                if name:
-                    webbrowser.open(console_url(name, "runs"))
-        except Exception:
-            pass
 
     def action_focus_right(self) -> None:
         st = self.query_one("#schedules-table", DataTable)

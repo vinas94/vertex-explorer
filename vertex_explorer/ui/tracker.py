@@ -1,5 +1,3 @@
-import webbrowser
-
 import pendulum
 from rich.text import Text
 from textual import on
@@ -10,14 +8,7 @@ from textual.widgets import Label
 
 import vertex_explorer.config as config
 from vertex_explorer.filters import parse_filter
-from vertex_explorer.ui.formatters import (
-    console_url,
-    fmt_duration,
-    fmt_name,
-    fmt_region,
-    fmt_time,
-    run_dots,
-)
+from vertex_explorer.ui.formatters import fmt_duration, fmt_name, fmt_region, fmt_time, run_dots
 from vertex_explorer.ui.widgets import DataTable, TextArea
 
 
@@ -28,7 +19,6 @@ class TrackerTab(Vertical):
         Binding("a", "toggle_running", "Running"),
         Binding("d", "toggle_failed", "Failed"),
         Binding("c", "toggle_cancelled", "Cancelled"),
-        Binding("O", "open_schedule", show=False),
     ]
 
     filter: reactive[str] = reactive("", init=False)
@@ -90,26 +80,6 @@ class TrackerTab(Vertical):
         self.cancelled = not self.cancelled
         self.repopulate()
         self.app.update_binding_highlights()
-
-    def action_open_current(self) -> None:
-        t = self.query_one("#tracker-table", DataTable)
-        try:
-            name = t.coordinate_to_cell_key(t.cursor_coordinate).row_key.value
-            if name:
-                webbrowser.open(console_url(name, "runs"))
-        except Exception:
-            pass
-
-    def action_open_schedule(self) -> None:
-        t = self.query_one("#tracker-table", DataTable)
-        try:
-            run_name = t.coordinate_to_cell_key(t.cursor_coordinate).row_key.value
-            if run_name:
-                run = self.app.runs_by_name.get(run_name)
-                if run and run.schedule_name and not run.schedule_name.endswith("__unscheduled__"):
-                    webbrowser.open(console_url(run.schedule_name, "schedules"))
-        except Exception:
-            pass
 
     def escape(self) -> None:
         self._blur_filters()
