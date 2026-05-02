@@ -128,9 +128,9 @@ class TrackerTab(Vertical):
     def _on_filter_changed(self, event: TextArea.Changed) -> None:
         self.filter = event.text_area.text.strip()
 
-    def on_key(self, event) -> None:
-        if event.key in ("ctrl+j", "shift+enter") and self._blur_filters():
-            event.stop()
+    @on(TextArea.Submitted, "#tracker-filters")
+    def _on_filter_submitted(self, _: TextArea.Submitted) -> None:
+        self._blur_filters()
 
     def _on_scroll_y(self, scroll_y: float) -> None:
         table = self.query_one("#tracker-table", DataTable)

@@ -35,11 +35,11 @@ class OverviewTab(Vertical):
     # ── layout ────────────────────────────────────────────────────────────────
 
     def compose(self):
-        yield Input(placeholder="filter...", id="filter-input")
+        yield Input(placeholder="filter...", id="overview-filter")
         yield Horizontal(
             DataTable(id="schedules-table", cursor_foreground_priority="renderable"),
             DataTable(id="runs-table", cursor_foreground_priority="renderable"),
-            id="content",
+            id="overview-content",
         )
 
     def on_mount(self) -> None:
@@ -189,7 +189,7 @@ class OverviewTab(Vertical):
     # ── actions ───────────────────────────────────────────────────────────────
 
     def action_focus_filter(self) -> None:
-        self.query_one("#filter-input", Input).focus()
+        self.query_one("#overview-filter", Input).focus()
 
     def watch_filter(self) -> None:
         self.repopulate_schedules()
@@ -219,13 +219,13 @@ class OverviewTab(Vertical):
 
     # ── events ────────────────────────────────────────────────────────────────
 
-    @on(Input.Changed, "#filter-input")
+    @on(Input.Changed, "#overview-filter")
     def _on_filter_changed(self, event: Input.Changed) -> None:
         self.filter = event.value.strip()
 
-    @on(Input.Submitted, "#filter-input")
+    @on(Input.Submitted, "#overview-filter")
     def _on_filter_submitted(self, _: Input.Submitted) -> None:
-        filters = self.query_one("#filter-input", Input)
+        filters = self.query_one("#overview-filter", Input)
         filters.value = filters.value.strip()
         self.focus_default()
 
@@ -240,10 +240,6 @@ class OverviewTab(Vertical):
         if self._current_schedule and event.cursor_row == event.data_table.row_count - 1:
             self._load_more_runs()
 
-    def on_key(self, event) -> None:
-        if event.key in ("ctrl+j", "shift+enter") and self._blur_filter():
-            event.stop()
-
     def _on_runs_scroll_y(self, scroll_y: float) -> None:
         table = self.query_one("#runs-table", DataTable)
         if self._current_schedule and 0 < table.max_scroll_y <= scroll_y:
@@ -252,7 +248,7 @@ class OverviewTab(Vertical):
     # ── helpers ───────────────────────────────────────────────────────────────
 
     def _blur_filter(self, target=None) -> bool:
-        filters = self.query_one("#filter-input", Input)
+        filters = self.query_one("#overview-filter", Input)
         if filters.has_focus and target is not filters:
             filters.value = filters.value.strip()
             if isinstance(target, DataTable):

@@ -1,6 +1,8 @@
 import textual.widgets as widgets
 from rich.text import Text
 from textual import events
+from textual.binding import Binding
+from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets._footer import FooterKey
 
@@ -44,6 +46,10 @@ class Footer(widgets.Footer):
 
 
 class Input(widgets.Input):
+    BINDINGS = [
+        Binding("ctrl+j,shift+enter", "submit", show=False),
+    ]
+
     async def _on_click(self, event) -> None:
         await super()._on_click(event)
         if event.chain == 2:
@@ -87,6 +93,16 @@ class SettingsInput(Input):
 
 
 class TextArea(widgets.TextArea):
+    BINDINGS = [
+        Binding("ctrl+j,shift+enter", "submit", show=False),
+    ]
+
+    class Submitted(Message):
+        pass
+
+    def action_submit(self) -> None:
+        self.post_message(self.Submitted())
+
     async def _on_click(self, event: events.Click) -> None:
         await super()._on_click(event)
         if event.chain == 2:
