@@ -181,6 +181,7 @@ class VertexExplorer(App):
             self.query_one(tab_cls).display = is_active
             self.query_one(f"#tab-{name}").set_class(is_active, "-active")
         self._active_tab.focus_default()
+        self.update_binding_highlights()
         self.refresh_status()
 
     # ── events ────────────────────────────────────────────────────────────────
