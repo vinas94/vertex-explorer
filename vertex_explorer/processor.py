@@ -1,10 +1,10 @@
 import pendulum
 
-from vertex_explorer.config import PROJECT
+import vertex_explorer.config as config
 
 
 def synthetic_name(location: str) -> str:
-    return f"projects/{PROJECT}/locations/{location}/schedules/__unscheduled__"
+    return f"projects/{config.PROJECT}/locations/{location}/schedules/__unscheduled__"
 
 
 def synthetic_schedule(location: str) -> dict:
