@@ -5,7 +5,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Input, Label
 
 import vertex_explorer.config as config
-from vertex_explorer.ui.widgets import SettingsNavInput, Static
+from vertex_explorer.ui.widgets import SettingsInput, Static
 
 _GRID = [
     [("Runs Days", "s-runs-days"), ("Project", "s-project")],
@@ -47,7 +47,7 @@ class SettingsScreen(ModalScreen[bool]):
                                 if kind and kind[0] == "checkbox":
                                     yield Static(value=config.SHORT_REGIONS, id=id_, classes="setting-tick")
                                 else:
-                                    yield SettingsNavInput(_current_value(id_), id=id_)
+                                    yield SettingsInput(_current_value(id_), id=id_)
                 with Vertical(classes="settings-col"):
                     for row in _GRID:
                         cell = row[1]
@@ -58,7 +58,7 @@ class SettingsScreen(ModalScreen[bool]):
                                 if kind and kind[0] == "checkbox":
                                     yield Static(value=config.SHORT_REGIONS, id=id_, classes="setting-tick")
                                 else:
-                                    yield SettingsNavInput(_current_value(id_), id=id_)
+                                    yield SettingsInput(_current_value(id_), id=id_)
 
     def on_mount(self) -> None:
         self.watch_cursor()
