@@ -63,7 +63,6 @@ class VertexExplorer(App):
     last_refresh: pendulum.DateTime | None = None
 
     _auth_granted: bool = False
-    _persistent_pressed: set[str] = set()
 
     # ── layout ────────────────────────────────────────────────────────────────
 
@@ -146,8 +145,7 @@ class VertexExplorer(App):
         self._flash_key("settings", auto_clear=False)
 
         def _on_dismiss(needs_refresh: bool | None) -> None:
-            self._persistent_pressed.discard("settings")
-            self.query_one(Footer).clear_pressed("settings")
+            self.query_one(Footer).release("settings")
             if needs_refresh:
                 self.action_refresh()
 
@@ -265,11 +263,12 @@ class VertexExplorer(App):
     # ── helpers ───────────────────────────────────────────────────────────────
 
     def _flash_key(self, action: str, *, auto_clear: bool = True) -> None:
-        if not auto_clear:
-            self._persistent_pressed.add(action)
-        self.query_one(Footer).flash(action)
+        footer = self.query_one(Footer)
         if auto_clear:
-            self.set_timer(0.15, lambda: self.query_one(Footer).clear_pressed(action))
+            footer.flash(action)
+            self.set_timer(0.15, lambda: footer.clear_pressed(action))
+        else:
+            footer.hold(action)
 
     def _do_quit(self) -> None:
         self.workers.cancel_all()

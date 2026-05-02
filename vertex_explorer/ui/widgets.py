@@ -14,11 +14,13 @@ class DataTable(widgets.DataTable):
 
 
 class Footer(widgets.Footer):
+    _pressed: set[str] = set()
+    _toggled: dict[str, bool] = {}
+
     async def recompose(self) -> None:
         await super().recompose()
-        # TODO: should not depend on app!
-        self.app.update_binding_highlights()
-        self.restore_pressed(self.app._persistent_pressed)
+        self._apply_pressed()
+        self._apply_toggled()
 
     def flash(self, action: str) -> None:
         for key in self._keys_for_action(action):
@@ -28,14 +30,27 @@ class Footer(widgets.Footer):
         for key in self._keys_for_action(action):
             key.remove_class("-pressed")
 
-    def restore_pressed(self, actions: set[str]) -> None:
-        for key in self._footer_keys:
-            if key.action in actions:
-                key.add_class("-pressed")
+    def hold(self, action: str) -> None:
+        self._pressed.add(action)
+        for key in self._keys_for_action(action):
+            key.add_class("-pressed")
+
+    def release(self, action: str) -> None:
+        self._pressed.discard(action)
+        for key in self._keys_for_action(action):
+            key.remove_class("-pressed")
 
     def set_toggled(self, actions: dict[str, bool]) -> None:
+        self._toggled = actions
+        self._apply_toggled()
+
+    def _apply_pressed(self) -> None:
         for key in self._footer_keys:
-            key.set_class(actions.get(key.action, False), "-toggled")
+            key.set_class(key.action in self._pressed, "-pressed")
+
+    def _apply_toggled(self) -> None:
+        for key in self._footer_keys:
+            key.set_class(self._toggled.get(key.action, False), "-toggled")
 
     def _keys_for_action(self, action: str):
         return (key for key in self._footer_keys if key.action == action)
