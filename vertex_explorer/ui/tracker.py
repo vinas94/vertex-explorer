@@ -98,8 +98,6 @@ class TrackerTab(Vertical):
     def watch_filter(self) -> None:
         self.repopulate()
         self.app.update_binding_highlights()
-        config.TRACKER_FILTERS = [line for line in self.filter.splitlines() if line.strip()]
-        config.save_settings()
 
     def action_toggle_region(self) -> None:
         cycle = dict(zip([None, *config.REGIONS], [*config.REGIONS, None]))
@@ -143,6 +141,8 @@ class TrackerTab(Vertical):
         filters = self.query_one("#tracker-filters", TextArea)
         if filters.has_focus and target is not filters:
             self._strip_filters()
+            config.TRACKER_FILTERS = [line for line in self.filter.splitlines() if line.strip()]
+            config.save_settings()
             if isinstance(target, DataTable):
                 target.focus()
             else:
