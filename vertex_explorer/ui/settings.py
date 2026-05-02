@@ -63,6 +63,10 @@ class SettingsScreen(ModalScreen[bool]):
     def on_mount(self) -> None:
         self.watch_cursor()
 
+    def on_descendant_focus(self) -> None:
+        if self.focused is not None and (pos := _GRID_POS.get(self.focused.id)) is not None:
+            self.cursor = pos
+
     def on_key(self, event) -> None:
         if event.key == "s" and self.focused is None:
             self.dismiss(False)
