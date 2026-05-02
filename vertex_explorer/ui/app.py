@@ -164,11 +164,10 @@ class VertexExplorer(App):
         self.tab = names[(names.index(self.tab) + 1) % len(names)]
 
     def watch_tab(self) -> None:
-        on_overview = self.tab == "overview"
-        self.query_one(OverviewTab).display = on_overview
-        self.query_one(TrackerTab).display = not on_overview
-        self.query_one("#tab-overview").set_class(on_overview, "-active")
-        self.query_one("#tab-tracker").set_class(not on_overview, "-active")
+        for name, tab_cls in self.TABS.items():
+            is_active = name == self.tab
+            self.query_one(tab_cls).display = is_active
+            self.query_one(f"#tab-{name}").set_class(is_active, "-active")
         self._active_tab.focus_default()
         self.refresh_status()
 
@@ -251,6 +250,28 @@ class VertexExplorer(App):
 
     # ── helpers ───────────────────────────────────────────────────────────────
 
+    def _flash_key(self, action: str, *, auto_clear: bool = True) -> None:
+        if not auto_clear:
+            self._persistent_pressed.add(action)
+        self.query_one(Footer).flash(action)
+        if auto_clear:
+            self.set_timer(0.15, lambda: self.query_one(Footer).clear_pressed(action))
+
+    def _do_quit(self) -> None:
+        self.workers.cancel_all()
+        _stop = self._driver.stop_application_mode
+
+        def _stop_and_exit():
+            _stop()
+            devnull = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(devnull, 1)
+            os.dup2(devnull, 2)
+            os.close(devnull)
+            os._exit(0)
+
+        self._driver.stop_application_mode = _stop_and_exit
+        self.exit()
+
     @staticmethod
     def _check_auth() -> bool:
         import google.auth
@@ -268,46 +289,8 @@ class VertexExplorer(App):
         ):
             return False
 
+    # ── properties ────────────────────────────────────────────────────────────
+
     @property
     def _active_tab(self) -> OverviewTab | TrackerTab:
-        return self.query_one(OverviewTab if self.tab == "overview" else TrackerTab)
-
-    def _flash_key(self, action: str, *, auto_clear: bool = True) -> None:
-        if not auto_clear:
-            self._persistent_pressed.add(action)
-        self.query_one(Footer).flash(action)
-        if auto_clear:
-            self.set_timer(0.15, lambda: self.query_one(Footer).clear_pressed(action))
-
-    def update_binding_highlights(self) -> None:
-        toggled = {}
-        if self.tab == "overview":
-            tab = self.query_one(OverviewTab)
-            toggled = {
-                "focus_filter": bool(tab.filter),
-                "toggle_region": tab.region_ is not None,
-                "toggle_active": tab.active,
-            }
-        elif self.tab == "tracker":
-            tab = self.query_one(TrackerTab)
-            toggled = {
-                "focus_filter": bool(tab.filter),
-                "toggle_region": tab.region_ is not None,
-                "toggle_running": tab.running,
-                "toggle_failed": tab.failed,
-                "toggle_cancelled": tab.cancelled,
-            }
-        self.query_one(Footer).set_toggled(toggled)
-
-    def repopulate(self) -> None:
-        self.query_one(OverviewTab).repopulate()
-        self.query_one(TrackerTab).repopulate()
-
-    def set_notification(self, msg: str) -> None:
-        self.notification = msg
-        self.refresh_status()
-
-    def refresh_status(self, right: str = "") -> None:
-        left = self.notification or getattr(self._active_tab, "notification", "")
-        self.query_one("#status-left", Label).update(left)
-        self.query_one("#status-right", Label).update(right)
+        return self.query_one(self.TABS[self.tab])
