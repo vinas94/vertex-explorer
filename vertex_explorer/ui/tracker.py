@@ -116,6 +116,10 @@ class TrackerTab(Vertical):
     def _on_filter_changed(self, event: TextArea.Changed) -> None:
         self.filter = event.text_area.text.strip()
 
+    def on_key(self, event) -> None:
+        if event.key in ("ctrl+j", "shift+enter") and self._blur_filters():
+            event.stop()
+
     def watch_filter(self) -> None:
         self.repopulate()
         self.app.update_binding_highlights()

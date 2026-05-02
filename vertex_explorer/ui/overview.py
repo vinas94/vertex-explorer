@@ -147,6 +147,10 @@ class OverviewTab(Vertical):
         fi.value = fi.value.strip()
         self.focus_default()
 
+    def on_key(self, event) -> None:
+        if event.key in ("ctrl+j", "shift+enter") and self._blur_filter():
+            event.stop()
+
     @on(DataTable.RowHighlighted, "#schedules-table")
     @on(DataTable.RowSelected, "#schedules-table")
     def _on_schedule_highlighted(self, event: DataTable.RowHighlighted | DataTable.RowSelected) -> None:
