@@ -172,6 +172,8 @@ class VertexExplorer(App):
             if hasattr(self.screen, "tab_next"):
                 self.screen.tab_next()
             return
+        if self._active_tab.blur_active_input():
+            return
         names = list(self.TABS)
         self.tab = names[(names.index(self.tab) + 1) % len(names)]
 
