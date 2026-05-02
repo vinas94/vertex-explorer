@@ -178,8 +178,8 @@ class VertexExplorer(App):
 
     @on(Click, ".tab")
     def _on_tab_click(self, event: Click) -> None:
-        if event.widget and event.widget.id:
-            self.tab = event.widget.id.removeprefix("tab-")
+        if event.widget and (wid := event.widget.id):
+            self.tab = wid.removeprefix("tab-")
 
     # ── data ──────────────────────────────────────────────────────────────────
 
@@ -294,3 +294,19 @@ class VertexExplorer(App):
     @property
     def _active_tab(self) -> OverviewTab | TrackerTab:
         return self.query_one(self.TABS[self.tab])
+
+    @property
+    def _focused_resource(self) -> tuple[str, str] | None:
+        table = self.focused
+        if not isinstance(table, DataTable):
+            return None
+        kind = self.TABLE_KINDS.get(table.id or "")
+        if not kind:
+            return None
+        try:
+            name = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
+        except Exception:
+            return None
+        if not name or name.endswith("__unscheduled__"):
+            return None
+        return kind, name
