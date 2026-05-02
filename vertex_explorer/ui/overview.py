@@ -141,12 +141,15 @@ class OverviewTab(Vertical):
 
     def repopulate_runs(self) -> None:
         selected_schedule = self._selected_schedule
+        if not selected_schedule:
+            return
+
         runs_table = self.query_one("#runs-table", DataTable)
 
         try:
-            key = runs_table.coordinate_to_cell_key(runs_table.cursor_coordinate).row_key.value
-            if key:
-                self._run_cursors[self._current_schedule] = key
+            if current := self._current_schedule:
+                if key := runs_table.coordinate_to_cell_key(runs_table.cursor_coordinate).row_key.value:
+                    self._run_cursors[current] = key
         except Exception:
             pass
 
@@ -261,6 +264,8 @@ class OverviewTab(Vertical):
 
     def _load_more_runs(self) -> None:
         selected = self._current_schedule
+        if not selected:
+            return
         is_unscheduled = selected.endswith("__unscheduled__")
         _, filter_terms = parse_filter(self.filter)
         all_runs = (
@@ -325,8 +330,6 @@ class OverviewTab(Vertical):
     @property
     def _selected_schedule(self) -> str | None:
         st = self.query_one("#schedules-table", DataTable)
-        if not st.row_count:
-            return None
         return st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
 
     @property
