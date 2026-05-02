@@ -107,11 +107,9 @@ class SettingsScreen(ModalScreen[bool]):
         event.stop()
 
     def on_click(self, event) -> None:
-        if self._blur_input(event.widget):
-            if event.widget is self:
-                event.stop()
-            return
-        if event.widget is self:
+        if self.focused is not None and event.widget is not self.focused:
+            self.set_focus(None)
+        elif event.widget is self:
             self.dismiss(False)
 
     def tab_next(self) -> None:
@@ -120,16 +118,7 @@ class SettingsScreen(ModalScreen[bool]):
         self.cursor = _GRID_ORDER[(_GRID_ORDER.index(self.cursor) + 1) % len(_GRID_ORDER)]
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        event.input.value = event.input.value.strip()
         self.set_focus(None)
-
-    def _blur_input(self, target=None) -> bool:
-        focused = self.focused
-        if isinstance(focused, Input) and focused is not target:
-            focused.value = focused.value.strip()
-            self.set_focus(None)
-            return True
-        return False
 
     def watch_cursor(self) -> None:
         row, col = self.cursor
