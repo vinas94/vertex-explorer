@@ -1,3 +1,5 @@
+from typing import NamedTuple
+
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
@@ -7,14 +9,20 @@ from textual.widgets import Input, Label
 import vertex_explorer.config as config
 from vertex_explorer.ui.widgets import SettingsInput, Static
 
-_Cell = tuple[str, str, str | None]
-_GRID: list[list[_Cell | None]] = [
-    [("Runs Days", "s-runs-days", None), ("Project", "s-project", None)],
-    [("Schedules Days", "s-schedules-days", None), ("Regions", "s-regions", None)],
-    [("Short Regions", "s-short-regions", "checkbox"), None],
+
+class Cell(NamedTuple):
+    label: str
+    id: str
+    kind: str | None = None
+
+
+_GRID: list[list[Cell | None]] = [
+    [Cell("Runs Days", "s-runs-days"), Cell("Project", "s-project")],
+    [Cell("Schedules Days", "s-schedules-days"), Cell("Regions", "s-regions")],
+    [Cell("Short Regions", "s-short-regions", "checkbox"), None],
 ]
 
-_GRID_POS = {cell[1]: (r, c) for r, row in enumerate(_GRID) for c, cell in enumerate(row) if cell is not None}
+_GRID_POS = {cell.id: (r, c) for r, row in enumerate(_GRID) for c, cell in enumerate(row) if cell is not None}
 _GRID_ORDER = list(_GRID_POS.values())
 
 
@@ -41,13 +49,12 @@ class SettingsScreen(ModalScreen[bool]):
                         for row in _GRID:
                             cell = row[col_idx]
                             if cell is not None:
-                                label, id_, kind = cell
                                 with Horizontal(classes="setting-row"):
-                                    yield Label(label, classes="setting-label")
-                                    if kind == "checkbox":
-                                        yield Static(value=config.SHORT_REGIONS, id=id_, classes="setting-tick")
+                                    yield Label(cell.label, classes="setting-label")
+                                    if cell.kind == "checkbox":
+                                        yield Static(value=config.SHORT_REGIONS, id=cell.id, classes="setting-tick")
                                     else:
-                                        yield SettingsInput(_current_value(id_), id=id_)
+                                        yield SettingsInput(_current_value(cell.id), id=cell.id)
 
     def on_mount(self) -> None:
         self.watch_cursor()
@@ -87,11 +94,10 @@ class SettingsScreen(ModalScreen[bool]):
             self.cursor = (row, new_col) if _GRID[row][new_col] is not None else (row, col)
         elif event.key == "enter":
             cell = _GRID[row][col]
-            _, id_, kind = cell
-            if kind == "checkbox":
-                self.query_one(f"#{id_}", Static).toggle()
+            if cell.kind == "checkbox":
+                self.query_one(f"#{cell.id}", Static).toggle()
             else:
-                inp = self.query_one(f"#{id_}", Input)
+                inp = self.query_one(f"#{cell.id}", Input)
                 inp.can_focus = True
                 inp.focus()
         else:
@@ -114,11 +120,9 @@ class SettingsScreen(ModalScreen[bool]):
         self.set_focus(None)
 
     def watch_cursor(self) -> None:
-        row, col = self.cursor
-        for r, pair in enumerate(_GRID):
-            for c, cell in enumerate(pair):
-                if cell:
-                    self.query_one(f"#{cell[1]}").set_class(r == row and c == col, "-cursor")
+        cursor = self.cursor
+        for id_, pos in _GRID_POS.items():
+            self.query_one(f"#{id_}").set_class(pos == cursor, "-cursor")
 
     def _save(self) -> bool:
         def _int(idx: str, fallback: int) -> int:
