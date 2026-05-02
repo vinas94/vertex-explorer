@@ -141,8 +141,15 @@ class OverviewTab(Vertical):
 
     def repopulate_runs(self) -> None:
         selected_schedule = self._selected_schedule
-
         runs_table = self.query_one("#runs-table", DataTable)
+
+        try:
+            key = runs_table.coordinate_to_cell_key(runs_table.cursor_coordinate).row_key.value
+            if key:
+                self._run_cursors[self._current_schedule] = key
+        except Exception:
+            pass
+
         if not runs_table.columns:
             runs_table.add_columns("Status", "Start", "Duration")
         runs_table.clear()
@@ -163,13 +170,6 @@ class OverviewTab(Vertical):
             runs = [run for run in runs if run.name and predicate(fmt_name(run.name))]
         self._append_run_rows(runs_table, runs[: config.RUNS_PAGE_SIZE], is_unscheduled, filter_terms)
         self._run_offsets[selected_schedule] = config.RUNS_PAGE_SIZE
-
-        try:
-            key = runs_table.coordinate_to_cell_key(runs_table.cursor_coordinate).row_key.value
-            if key:
-                self._run_cursors[self._current_schedule] = key
-        except Exception:
-            pass
 
         self._current_schedule = selected_schedule
 
