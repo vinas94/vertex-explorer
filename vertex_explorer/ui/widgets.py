@@ -98,10 +98,16 @@ class TextArea(widgets.TextArea):
     ]
 
     class Submitted(Message):
-        pass
+        def __init__(self, text_area: "TextArea") -> None:
+            super().__init__()
+            self.text_area = text_area
+
+        @property
+        def control(self) -> "TextArea":
+            return self.text_area
 
     def action_submit(self) -> None:
-        self.post_message(self.Submitted())
+        self.post_message(self.Submitted(self))
 
     async def _on_click(self, event: events.Click) -> None:
         await super()._on_click(event)

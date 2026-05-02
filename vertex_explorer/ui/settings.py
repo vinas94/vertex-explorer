@@ -7,16 +7,15 @@ from textual.widgets import Input, Label
 import vertex_explorer.config as config
 from vertex_explorer.ui.widgets import SettingsInput, Static
 
-_GRID = [
-    [("Runs Days", "s-runs-days"), ("Project", "s-project")],
-    [("Schedules Days", "s-schedules-days"), ("Regions", "s-regions")],
+_Cell = tuple[str, str, str | None]
+_GRID: list[list[_Cell | None]] = [
+    [("Runs Days", "s-runs-days", None), ("Project", "s-project", None)],
+    [("Schedules Days", "s-schedules-days", None), ("Regions", "s-regions", None)],
     [("Short Regions", "s-short-regions", "checkbox"), None],
 ]
 
-_GRID_POS = {
-    id_: (r, c) for r, pair in enumerate(_GRID) for c, cell in enumerate(pair) if cell for (_, id_, *_) in [cell]
-}
-_GRID_ORDER = [(r, c) for r in range(len(_GRID)) for c in range(2) if _GRID[r][c] is not None]
+_GRID_POS = {cell[1]: (r, c) for r, row in enumerate(_GRID) for c, cell in enumerate(row) if cell is not None}
+_GRID_ORDER = list(_GRID_POS.values())
 
 
 def _current_value(id_: str) -> str:
@@ -37,28 +36,18 @@ class SettingsScreen(ModalScreen[bool]):
                 yield Label("Settings", id="settings-title")
                 yield Label("shift+enter to save", id="settings-hint")
             with Horizontal(id="settings-columns"):
-                with Vertical(classes="settings-col"):
-                    for row in _GRID:
-                        cell = row[0]
-                        if cell:
-                            lbl, id_, *kind = cell
-                            with Horizontal(classes="setting-row"):
-                                yield Label(lbl, classes="setting-label")
-                                if kind and kind[0] == "checkbox":
-                                    yield Static(value=config.SHORT_REGIONS, id=id_, classes="setting-tick")
-                                else:
-                                    yield SettingsInput(_current_value(id_), id=id_)
-                with Vertical(classes="settings-col"):
-                    for row in _GRID:
-                        cell = row[1]
-                        if cell:
-                            lbl, id_, *kind = cell
-                            with Horizontal(classes="setting-row"):
-                                yield Label(lbl, classes="setting-label")
-                                if kind and kind[0] == "checkbox":
-                                    yield Static(value=config.SHORT_REGIONS, id=id_, classes="setting-tick")
-                                else:
-                                    yield SettingsInput(_current_value(id_), id=id_)
+                for col_idx in range(2):
+                    with Vertical(classes="settings-col"):
+                        for row in _GRID:
+                            cell = row[col_idx]
+                            if cell is not None:
+                                label, id_, kind = cell
+                                with Horizontal(classes="setting-row"):
+                                    yield Label(label, classes="setting-label")
+                                    if kind == "checkbox":
+                                        yield Static(value=config.SHORT_REGIONS, id=id_, classes="setting-tick")
+                                    else:
+                                        yield SettingsInput(_current_value(id_), id=id_)
 
     def on_mount(self) -> None:
         self.watch_cursor()
@@ -98,8 +87,8 @@ class SettingsScreen(ModalScreen[bool]):
             self.cursor = (row, new_col) if _GRID[row][new_col] is not None else (row, col)
         elif event.key == "enter":
             cell = _GRID[row][col]
-            _, id_, *kind = cell
-            if kind and kind[0] == "checkbox":
+            _, id_, kind = cell
+            if kind == "checkbox":
                 self.query_one(f"#{id_}", Static).toggle()
             else:
                 inp = self.query_one(f"#{id_}", Input)
@@ -121,7 +110,7 @@ class SettingsScreen(ModalScreen[bool]):
             self.set_focus(None)
         self.cursor = _GRID_ORDER[(_GRID_ORDER.index(self.cursor) + 1) % len(_GRID_ORDER)]
 
-    def on_input_submitted(self, event: Input.Submitted) -> None:
+    def on_input_submitted(self, _: Input.Submitted) -> None:
         self.set_focus(None)
 
     def watch_cursor(self) -> None:
@@ -129,8 +118,7 @@ class SettingsScreen(ModalScreen[bool]):
         for r, pair in enumerate(_GRID):
             for c, cell in enumerate(pair):
                 if cell:
-                    _, id_, *_ = cell
-                    self.query_one(f"#{id_}").set_class(r == row and c == col, "-cursor")
+                    self.query_one(f"#{cell[1]}").set_class(r == row and c == col, "-cursor")
 
     def _save(self) -> bool:
         def _int(idx: str, fallback: int) -> int:
