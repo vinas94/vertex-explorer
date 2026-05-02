@@ -35,7 +35,7 @@ class TrackerTab(Vertical):
 
     def compose(self):
         with Horizontal():
-            with Vertical(id="tracker-left"):
+            with Vertical(id="tracker-sidebar"):
                 yield Label("Filters")
                 yield TextArea(id="tracker-filters")
             yield DataTable(id="tracker-table", cursor_foreground_priority="renderable")

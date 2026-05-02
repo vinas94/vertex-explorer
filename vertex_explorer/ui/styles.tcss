@@ -1,46 +1,57 @@
-OverviewTab { height: 1fr; }
-#titlebar { height: 1; background: $primary-darken-1; padding: 0 1; }
-#status-left { width: 1fr; content-align: left middle; }
-#tab-indicator { width: 1fr; align: center middle; }
-.tab { width: auto; height: 1; content-align: center middle; padding: 0 1; }
-.tab.-active { background: $accent; color: $text; }
+/* ── App ──────────────────────────────────────────────────────────────────── */
+
+#titlebar      { height: 1; background: $primary-darken-1; padding: 0 1; }
+#status-left   { width: 1fr; content-align: left middle; }
 #status-center { width: 2fr; content-align: center middle; text-style: bold; }
-#status-right { width: 2fr; content-align: right middle; }
-#overview-filter { height: 1; border: none; padding: 0 1; }
-#overview-content { height: 1fr; }
-#schedules-table { width: 1fr; overflow-x: hidden; }
-#runs-table { width: 23%; overflow-x: hidden; }
-#runs-table.-unscheduled { width: 1fr; }
-FooterKey.-toggled .footer-key--key { background: $accent; color: $text; }
-FooterKey.-toggled .footer-key--description { color: $accent; }
-FooterKey.-pressed .footer-key--key { background: $accent; color: $text; }
+#status-right  { width: 2fr; content-align: right middle; }
+#tab-indicator { width: 1fr; align: center middle; }
+.tab           { width: auto; height: 1; content-align: center middle; padding: 0 1; }
+.tab.-active   { background: $accent; color: $text; }
+
+FooterKey.-toggled .footer-key--key,
+FooterKey.-pressed .footer-key--key         { background: $accent; color: $text; }
+FooterKey.-toggled .footer-key--description,
 FooterKey.-pressed .footer-key--description { color: $accent; }
 
-TrackerTab { height: 1fr; display: none; }
-#tracker-left { width: 20%; padding: 2 4; }
-#tracker-filters .text-area--cursor-line { background: $surface; }
-#tracker-filters { border: none; }
-#tracker-filters:focus { border: none; }
-
-SettingsScreen { align: center middle; }
-#settings-dialog { width: 63; height: auto; background: $surface; border: solid $primary; padding: 1 2; }
-#settings-header { height: 1; margin-bottom: 1; }
-#settings-title { text-style: bold; width: 1fr; }
-#settings-hint { text-style: italic; color: $text-muted; width: auto; content-align: right middle; }
-#settings-columns { height: auto; }
-.settings-col { height: auto; }
-.settings-col:first-of-type { width: 19; }
-.settings-col:last-of-type { width: 1fr; margin-left: 2; }
-.setting-row { height: 1; margin-bottom: 1; }
-.settings-col:first-of-type .setting-label { width: 16; }
-.settings-col:first-of-type .setting-row Input { width: 3; height: 1; border: none; padding: 0; }
-.settings-col:last-of-type .setting-label { width: 9; }
-.settings-col:last-of-type .setting-row Input { width: 1fr; height: 1; border: none; padding: 0; }
-Input.-cursor, .setting-tick.-cursor { background: $accent 30%; }
-.setting-tick { height: 1; width: 3; padding: 0; background: transparent; }
 Toast { width: auto; }
 
-/*
-First settings column width = 19 = 16 (label) + 3 (input)
-Second settings column width = all remaining; label width = 9
-*/
+/* ── Overview tab ─────────────────────────────────────────────────────────── */
+
+OverviewTab               { height: 1fr; }
+#overview-filter          { height: 1; border: none; padding: 0 1; }
+#overview-content         { height: 1fr; }
+#schedules-table          { width: 1fr; overflow-x: hidden; }
+#runs-table               { width: 23%; overflow-x: hidden; }
+#runs-table.-unscheduled  { width: 1fr; }
+
+/* ── Tracker tab ──────────────────────────────────────────────────────────── */
+
+TrackerTab                                  { height: 1fr; display: none; }
+#tracker-sidebar                            { width: 20%; padding: 2 4; }
+#tracker-filters                            { border: none; }
+#tracker-filters:focus                      { border: none; }
+#tracker-filters .text-area--cursor-line    { background: $surface; }
+
+/* ── Settings dialog ──────────────────────────────────────────────────────── */
+
+SettingsScreen   { align: center middle; }
+#settings-dialog { width: 63; height: auto; background: $surface; border: solid $primary; padding: 1 2; }
+
+#settings-header { height: 1; margin-bottom: 1; }
+#settings-title  { width: 1fr; text-style: bold; }
+#settings-hint   { width: auto; content-align: right middle; text-style: italic; color: $text-muted; }
+
+#settings-columns           { height: auto; }
+.settings-col               { height: auto; }
+.settings-col:first-of-type { width: 19; }   /* 16 (label) + 3 (input) */
+.settings-col:last-of-type  { width: 1fr; margin-left: 2; }
+
+.settings-row                              { height: 1; margin-bottom: 1; }
+.settings-col .settings-row Input          { height: 1; border: none; padding: 0; }
+.settings-col:first-of-type .settings-label      { width: 16; }
+.settings-col:first-of-type .settings-row Input  { width: 3; }
+.settings-col:last-of-type  .settings-label      { width: 9; }
+.settings-col:last-of-type  .settings-row Input  { width: 1fr; }
+
+.settings-tick                            { height: 1; width: 3; padding: 0; background: transparent; }
+Input.-cursor, .settings-tick.-cursor     { background: $accent 30%; }

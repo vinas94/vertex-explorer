@@ -49,10 +49,10 @@ class SettingsScreen(ModalScreen[bool]):
                         for row in _GRID:
                             cell = row[col_idx]
                             if cell is not None:
-                                with Horizontal(classes="setting-row"):
-                                    yield Label(cell.label, classes="setting-label")
+                                with Horizontal(classes="settings-row"):
+                                    yield Label(cell.label, classes="settings-label")
                                     if cell.kind == "checkbox":
-                                        yield Static(value=config.SHORT_REGIONS, id=cell.id, classes="setting-tick")
+                                        yield Static(value=config.SHORT_REGIONS, id=cell.id, classes="settings-tick")
                                     else:
                                         yield SettingsInput(_current_value(cell.id), id=cell.id)
 
