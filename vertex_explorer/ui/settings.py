@@ -5,7 +5,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Input, Label
 
 import vertex_explorer.config as config
-from vertex_explorer.ui.widgets import ClickableInput, Tick
+from vertex_explorer.ui.widgets import SettingsNavInput, Tick
 
 _GRID = [
     [("Runs Days", "s-runs-days"), ("Project", "s-project")],
@@ -28,26 +28,6 @@ def _current_value(id_: str) -> str:
     }[id_]
 
 
-class _NavInput(ClickableInput):
-    can_focus = False
-    _original_value: str = ""
-
-    def _on_focus(self, event) -> None:
-        self._original_value = self.value
-
-    async def _on_click(self, event) -> None:
-        blur_input = getattr(self.screen, "_blur_input", None)
-        if blur_input:
-            blur_input(self)
-        self.can_focus = True
-        self.focus()
-        self.screen.cursor = _GRID_POS[self.id]  # noqa
-        await super()._on_click(event)
-
-    def on_blur(self) -> None:
-        self.can_focus = False
-
-
 class SettingsScreen(ModalScreen[bool]):
     cursor: reactive[tuple[int, int]] = reactive((0, 0))
 
@@ -67,7 +47,7 @@ class SettingsScreen(ModalScreen[bool]):
                                 if kind and kind[0] == "checkbox":
                                     yield Tick(value=config.SHORT_REGIONS, id=id_, classes="setting-tick")
                                 else:
-                                    yield _NavInput(_current_value(id_), id=id_)
+                                    yield SettingsNavInput(_current_value(id_), id=id_)
                 with Vertical(classes="settings-col"):
                     for row in _GRID:
                         cell = row[1]
@@ -78,7 +58,7 @@ class SettingsScreen(ModalScreen[bool]):
                                 if kind and kind[0] == "checkbox":
                                     yield Tick(value=config.SHORT_REGIONS, id=id_, classes="setting-tick")
                                 else:
-                                    yield _NavInput(_current_value(id_), id=id_)
+                                    yield SettingsNavInput(_current_value(id_), id=id_)
 
     def on_mount(self) -> None:
         self.watch_cursor()

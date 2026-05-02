@@ -2,7 +2,7 @@ import webbrowser
 
 import pendulum
 from rich.text import Text
-from textual import events, on
+from textual import on
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
@@ -11,25 +11,15 @@ from textual.widgets import DataTable, Input
 import vertex_explorer.config as config
 from vertex_explorer.filters import parse_filter
 from vertex_explorer.ui.formatters import (
-    _console_url,
-    _fmt_duration,
-    _fmt_name,
-    _fmt_region,
-    _fmt_time,
-    _highlight,
-    _run_dots,
+    console_url,
+    fmt_duration,
+    fmt_name,
+    fmt_region,
+    fmt_time,
+    highlight,
+    run_dots,
 )
-from vertex_explorer.ui.widgets import ClickableInput
-
-
-class _FilterInput(ClickableInput):
-    pass
-
-
-class _DataTable(DataTable):
-    def _on_resize(self, event: events.Resize) -> None:
-        super()._on_resize(event)
-        self.refresh()
+from vertex_explorer.ui.widgets import FilterInput, RefreshingDataTable
 
 
 class OverviewTab(Vertical):
@@ -56,21 +46,21 @@ class OverviewTab(Vertical):
     # ── layout ────────────────────────────────────────────────────────────────
 
     def compose(self):
-        yield _FilterInput(placeholder="filter...", id="filter-input")
+        yield FilterInput(placeholder="filter...", id="filter-input")
         yield Horizontal(
-            _DataTable(id="schedules-table", cursor_foreground_priority="renderable"),
-            _DataTable(id="runs-table", cursor_foreground_priority="renderable"),
+            RefreshingDataTable(id="schedules-table", cursor_foreground_priority="renderable"),
+            RefreshingDataTable(id="runs-table", cursor_foreground_priority="renderable"),
             id="content",
         )
 
     def on_mount(self) -> None:
-        self.query_one("#schedules-table", _DataTable).cursor_type = "row"
-        rt = self.query_one("#runs-table", _DataTable)
+        self.query_one("#schedules-table", RefreshingDataTable).cursor_type = "row"
+        rt = self.query_one("#runs-table", RefreshingDataTable)
         rt.cursor_type = "row"
         self.watch(rt, "scroll_y", self._on_runs_scroll_y)
 
     def focus_default(self) -> None:
-        self.query_one("#schedules-table", _DataTable).focus()
+        self.query_one("#schedules-table", RefreshingDataTable).focus()
 
     def blur_active_input(self, target=None) -> bool:
         return self._blur_filter(target)
@@ -78,7 +68,7 @@ class OverviewTab(Vertical):
     # ── actions ───────────────────────────────────────────────────────────────
 
     def action_focus_filter(self) -> None:
-        self.query_one("#filter-input", _FilterInput).focus()
+        self.query_one("#filter-input", FilterInput).focus()
 
     def watch_filter(self) -> None:
         self.repopulate_schedules()
@@ -97,29 +87,29 @@ class OverviewTab(Vertical):
         self.app.update_binding_highlights()
 
     def action_open_current(self) -> None:
-        st = self.query_one("#schedules-table", _DataTable)
-        rt = self.query_one("#runs-table", _DataTable)
+        st = self.query_one("#schedules-table", RefreshingDataTable)
+        rt = self.query_one("#runs-table", RefreshingDataTable)
         try:
             if st.has_focus:
                 name = st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
                 if name and not name.endswith("__unscheduled__"):
-                    webbrowser.open(_console_url(name, "schedules"))
+                    webbrowser.open(console_url(name, "schedules"))
             elif rt.has_focus:
                 name = rt.coordinate_to_cell_key(rt.cursor_coordinate).row_key.value
                 if name:
-                    webbrowser.open(_console_url(name, "runs"))
+                    webbrowser.open(console_url(name, "runs"))
         except Exception:
             pass
 
     def action_focus_right(self) -> None:
-        st = self.query_one("#schedules-table", _DataTable)
+        st = self.query_one("#schedules-table", RefreshingDataTable)
         if st.has_focus:
-            self.query_one("#runs-table", _DataTable).focus()
+            self.query_one("#runs-table", RefreshingDataTable).focus()
 
     def action_focus_left(self) -> None:
-        rt = self.query_one("#runs-table", _DataTable)
+        rt = self.query_one("#runs-table", RefreshingDataTable)
         if rt.has_focus:
-            self.query_one("#schedules-table", _DataTable).focus()
+            self.query_one("#schedules-table", RefreshingDataTable).focus()
 
     def escape(self) -> None:
         if self._blur_filter():
@@ -132,8 +122,8 @@ class OverviewTab(Vertical):
     def reset(self) -> None:
         self._current_schedule = None
         self._rt_name_col = None
-        self.query_one("#schedules-table", _DataTable).clear(columns=True)
-        self.query_one("#runs-table", _DataTable).clear(columns=True)
+        self.query_one("#schedules-table", RefreshingDataTable).clear(columns=True)
+        self.query_one("#runs-table", RefreshingDataTable).clear(columns=True)
 
     # ── events ────────────────────────────────────────────────────────────────
 
@@ -143,7 +133,7 @@ class OverviewTab(Vertical):
 
     @on(Input.Submitted, "#filter-input")
     def _on_filter_submitted(self, _: Input.Submitted) -> None:
-        fi = self.query_one("#filter-input", _FilterInput)
+        fi = self.query_one("#filter-input", FilterInput)
         fi.value = fi.value.strip()
         self.focus_default()
 
@@ -163,15 +153,15 @@ class OverviewTab(Vertical):
             self._load_more_runs()
 
     def _on_runs_scroll_y(self, scroll_y: float) -> None:
-        table = self.query_one("#runs-table", _DataTable)
+        table = self.query_one("#runs-table", RefreshingDataTable)
         if self._current_schedule and 0 < table.max_scroll_y <= scroll_y:
             self._load_more_runs()
 
     def _blur_filter(self, target=None) -> bool:
-        fi = self.query_one("#filter-input", _FilterInput)
+        fi = self.query_one("#filter-input", FilterInput)
         if fi.has_focus and target is not fi:
             fi.value = fi.value.strip()
-            if isinstance(target, _DataTable):
+            if isinstance(target, RefreshingDataTable):
                 target.focus()
             else:
                 self.focus_default()
@@ -181,7 +171,7 @@ class OverviewTab(Vertical):
     # ── rendering ─────────────────────────────────────────────────────────────
 
     def repopulate_schedules(self) -> None:
-        table = self.query_one("#schedules-table", _DataTable)
+        table = self.query_one("#schedules-table", RefreshingDataTable)
 
         try:
             saved_key = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
@@ -224,17 +214,17 @@ class OverviewTab(Vertical):
                 if synthetic:
                     name_cell = Text(display_name, style="italic dim")
                 elif filter_terms:
-                    name_cell = _highlight(display_name, filter_terms)
+                    name_cell = highlight(display_name, filter_terms)
                 else:
                     name_cell = display_name
 
                 runs_by_schedule = self.app.runs_by_schedule
                 table.add_row(
-                    _fmt_region(name),
+                    fmt_region(name),
                     Text(state, style="green" if state == "ACTIVE" else "dim" if not synthetic else ""),
                     sched.get("cron", ""),
-                    _fmt_time(sched.get("nextRunTime")),
-                    _run_dots(runs_by_schedule.get(name, [])),
+                    fmt_time(sched.get("nextRunTime")),
+                    run_dots(runs_by_schedule.get(name, [])),
                     name_cell,
                     key=name,
                 )
@@ -255,7 +245,7 @@ class OverviewTab(Vertical):
             self._current_schedule = None
             return
 
-        runs_table = self.query_one("#runs-table", _DataTable)
+        runs_table = self.query_one("#runs-table", RefreshingDataTable)
         if not runs_table.columns:
             runs_table.add_columns("Status", "Start", "Duration")
         runs_table.clear()
@@ -273,7 +263,7 @@ class OverviewTab(Vertical):
 
         predicate, filter_terms = parse_filter(self.filter)
         if is_unscheduled and predicate:
-            runs = [run for run in runs if run.name and predicate(_fmt_name(run.name))]
+            runs = [run for run in runs if run.name and predicate(fmt_name(run.name))]
         self._append_run_rows(runs_table, runs[: config.RUNS_PAGE_SIZE], is_unscheduled, filter_terms)
         self._run_offsets[selected_schedule] = config.RUNS_PAGE_SIZE
 
@@ -304,7 +294,7 @@ class OverviewTab(Vertical):
         batch = all_runs[offset : offset + config.RUNS_PAGE_SIZE]
         if not batch:
             return
-        table = self.query_one("#runs-table", _DataTable)
+        table = self.query_one("#runs-table", RefreshingDataTable)
         self._append_run_rows(table, batch, is_unscheduled, filter_terms)
         self._run_offsets[selected] = offset + len(batch)
 
@@ -317,16 +307,16 @@ class OverviewTab(Vertical):
         if not predicate:
             return runs
 
-        return [run for run in runs if run.name and predicate(_fmt_name(run.name))]
+        return [run for run in runs if run.name and predicate(fmt_name(run.name))]
 
     def update_dots(self) -> None:
-        table = self.query_one("#schedules-table", _DataTable)
+        table = self.query_one("#schedules-table", RefreshingDataTable)
         for row_key in table.rows:
-            dots = _run_dots(self.app.runs_by_schedule.get(row_key.value, []))
+            dots = run_dots(self.app.runs_by_schedule.get(row_key.value, []))
             table.update_cell(row_key, self._st_prev_col, dots)
 
     @staticmethod
-    def _append_run_rows(table: _DataTable, runs: list, is_unscheduled: bool, filter_terms: list[str]) -> None:
+    def _append_run_rows(table: RefreshingDataTable, runs: list, is_unscheduled: bool, filter_terms: list[str]) -> None:
         cutoff_24h = pendulum.now("UTC").subtract(hours=24)
         for run in runs:
             state_name = run.state.name
@@ -334,17 +324,17 @@ class OverviewTab(Vertical):
             recent_fail = (
                 state_name == "PIPELINE_STATE_FAILED" and run.end_time and pendulum.instance(run.end_time) >= cutoff_24h
             )
-            start = Text(_fmt_time(run.start_time), style="red" if recent_fail else "")
-            duration = Text(_fmt_duration(run.start_time, run.end_time))
+            start = Text(fmt_time(run.start_time), style="red" if recent_fail else "")
+            duration = Text(fmt_duration(run.start_time, run.end_time))
             extra = ()
             if is_unscheduled:
-                run_name = _fmt_name(run.name)
-                extra = (_highlight(run_name, filter_terms) if filter_terms else Text(run_name),)
+                run_name = fmt_name(run.name)
+                extra = (highlight(run_name, filter_terms) if filter_terms else Text(run_name),)
             table.add_row(state, start, duration, *extra, key=run.name)
 
     @property
     def _selected_schedule(self) -> str | None:
-        st = self.query_one("#schedules-table", _DataTable)
+        st = self.query_one("#schedules-table", RefreshingDataTable)
         if not st.row_count:
             return None
         return st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value

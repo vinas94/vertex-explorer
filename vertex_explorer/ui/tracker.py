@@ -2,28 +2,23 @@ import webbrowser
 
 import pendulum
 from rich.text import Text
-from textual import events, on
+from textual import on
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
-from textual.widgets import DataTable, Label, TextArea
+from textual.widgets import Label, TextArea
 
 import vertex_explorer.config as config
 from vertex_explorer.filters import parse_filter
 from vertex_explorer.ui.formatters import (
-    _console_url,
-    _fmt_duration,
-    _fmt_name,
-    _fmt_region,
-    _fmt_time,
-    _run_dots,
+    console_url,
+    fmt_duration,
+    fmt_name,
+    fmt_region,
+    fmt_time,
+    run_dots,
 )
-
-
-class _DataTable(DataTable):
-    def _on_resize(self, event: events.Resize) -> None:
-        super()._on_resize(event)
-        self.refresh()
+from vertex_explorer.ui.widgets import FilterTextArea, RefreshingDataTable
 
 
 class TrackerTab(Vertical):
@@ -52,16 +47,16 @@ class TrackerTab(Vertical):
         with Horizontal():
             with Vertical(id="tracker-left"):
                 yield Label("Filters")
-                yield TextArea(id="tracker-filters")
-            yield _DataTable(id="tracker-table", cursor_foreground_priority="renderable")
+                yield FilterTextArea(id="tracker-filters")
+            yield RefreshingDataTable(id="tracker-table", cursor_foreground_priority="renderable")
 
     def on_mount(self) -> None:
-        t = self.query_one("#tracker-table", _DataTable)
+        t = self.query_one("#tracker-table", RefreshingDataTable)
         t.cursor_type = "row"
         self.watch(t, "scroll_y", self._on_scroll_y)
 
     def focus_default(self) -> None:
-        self.query_one("#tracker-table", _DataTable).focus()
+        self.query_one("#tracker-table", RefreshingDataTable).focus()
 
     def blur_active_input(self, target=None) -> bool:
         return self._blur_filters(target)
@@ -93,22 +88,22 @@ class TrackerTab(Vertical):
         self.app.update_binding_highlights()
 
     def action_open_current(self) -> None:
-        t = self.query_one("#tracker-table", _DataTable)
+        t = self.query_one("#tracker-table", RefreshingDataTable)
         try:
             name = t.coordinate_to_cell_key(t.cursor_coordinate).row_key.value
             if name:
-                webbrowser.open(_console_url(name, "runs"))
+                webbrowser.open(console_url(name, "runs"))
         except Exception:
             pass
 
     def action_open_schedule(self) -> None:
-        t = self.query_one("#tracker-table", _DataTable)
+        t = self.query_one("#tracker-table", RefreshingDataTable)
         try:
             run_name = t.coordinate_to_cell_key(t.cursor_coordinate).row_key.value
             if run_name:
                 run = self.app.runs_by_name.get(run_name)
                 if run and run.schedule_name and not run.schedule_name.endswith("__unscheduled__"):
-                    webbrowser.open(_console_url(run.schedule_name, "schedules"))
+                    webbrowser.open(console_url(run.schedule_name, "schedules"))
         except Exception:
             pass
 
@@ -138,7 +133,7 @@ class TrackerTab(Vertical):
         filters = self.query_one("#tracker-filters", TextArea)
         if filters.has_focus and target is not filters:
             self._strip_filters()
-            if isinstance(target, _DataTable):
+            if isinstance(target, RefreshingDataTable):
                 target.focus()
             else:
                 self.focus_default()
@@ -146,7 +141,7 @@ class TrackerTab(Vertical):
         return False
 
     def repopulate(self) -> None:
-        t = self.query_one("#tracker-table", _DataTable)
+        t = self.query_one("#tracker-table", RefreshingDataTable)
 
         try:
             saved_key = t.coordinate_to_cell_key(t.cursor_coordinate).row_key.value
@@ -173,12 +168,12 @@ class TrackerTab(Vertical):
     def reset(self) -> None:
         self._offset = 0
         self.region_ = None
-        self.query_one("#tracker-table", _DataTable).clear(columns=True)
+        self.query_one("#tracker-table", RefreshingDataTable).clear(columns=True)
 
     # ── rendering ─────────────────────────────────────────────────────────────
 
     def _on_scroll_y(self, scroll_y: float) -> None:
-        t = self.query_one("#tracker-table", _DataTable)
+        t = self.query_one("#tracker-table", RefreshingDataTable)
         if self.app.runs and 0 < t.max_scroll_y <= scroll_y:
             self._load_more()
 
@@ -187,11 +182,11 @@ class TrackerTab(Vertical):
         batch = runs[self._offset : self._offset + config.RUNS_PAGE_SIZE]
         if not batch:
             return
-        t = self.query_one("#tracker-table", _DataTable)
+        t = self.query_one("#tracker-table", RefreshingDataTable)
         self._append_rows(t, batch)
         self._offset += len(batch)
 
-    def _append_rows(self, table: _DataTable, runs: list) -> None:
+    def _append_rows(self, table: RefreshingDataTable, runs: list) -> None:
         schedules_by_name = {s["name"]: s for s in self.app.schedules}
         runs_by_schedule = self.app.runs_by_schedule
         cutoff_24h = pendulum.now("UTC").subtract(hours=24)
@@ -201,15 +196,15 @@ class TrackerTab(Vertical):
             recent_fail = (
                 state_name == "PIPELINE_STATE_FAILED" and run.end_time and pendulum.instance(run.end_time) >= cutoff_24h
             )
-            region = Text(_fmt_region(run.name) if run.name else "")
-            start = Text(_fmt_time(run.start_time), style="red" if recent_fail else "")
-            end = Text(_fmt_time(run.end_time))
-            duration = Text(_fmt_duration(run.start_time, run.end_time))
+            region = Text(fmt_region(run.name) if run.name else "")
+            start = Text(fmt_time(run.start_time), style="red" if recent_fail else "")
+            end = Text(fmt_time(run.end_time))
+            duration = Text(fmt_duration(run.start_time, run.end_time))
             sched = schedules_by_name.get(run.schedule_name) if run.schedule_name else None
             cron = sched["cron"] if sched else ""
-            next_run = _fmt_time(sched["nextRunTime"]) if sched else ""
-            prev = _run_dots(runs_by_schedule.get(run.schedule_name, [])) if run.schedule_name else ""
-            name = Text(_fmt_name(run.name))
+            next_run = fmt_time(sched["nextRunTime"]) if sched else ""
+            prev = run_dots(runs_by_schedule.get(run.schedule_name, [])) if run.schedule_name else ""
+            name = Text(fmt_name(run.name))
             table.add_row(region, state, cron, next_run, prev, start, end, duration, name, key=run.name)
 
     @property
@@ -228,7 +223,7 @@ class TrackerTab(Vertical):
         predicates = [parse_filter(line)[0] for line in self.filter.splitlines() if line.strip()]
         predicates = [p for p in predicates if p]
         if predicates:
-            runs = [r for r in runs if r.name and any(p(_fmt_name(r.name)) for p in predicates)]
+            runs = [r for r in runs if r.name and any(p(fmt_name(r.name)) for p in predicates)]
         if self.region_:
             runs = [r for r in runs if r.name and r.name.split("/")[3] == self.region_]
         if self.show_running or self.show_failed or self.show_cancelled:

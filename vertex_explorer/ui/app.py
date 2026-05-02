@@ -7,8 +7,7 @@ from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.reactive import reactive
 from textual.screen import ModalScreen
-from textual.widgets import Footer, Input, Label
-from textual.widgets._footer import FooterKey
+from textual.widgets import Input, Label
 
 import vertex_explorer.config as config
 from vertex_explorer.client import fetch_all
@@ -16,15 +15,7 @@ from vertex_explorer.processor import build_runs_index, build_schedules
 from vertex_explorer.ui.overview import OverviewTab
 from vertex_explorer.ui.settings import SettingsScreen
 from vertex_explorer.ui.tracker import TrackerTab
-
-
-class _Footer(Footer):
-    async def recompose(self) -> None:
-        await super().recompose()
-        self.app.update_binding_highlights()
-        for key in self.query(FooterKey):
-            if key.action in self.app._persistent_pressed:
-                key.add_class("-pressed")
+from vertex_explorer.ui.widgets import PressedFooter
 
 
 class VertexExplorer(App):
@@ -73,7 +64,7 @@ class VertexExplorer(App):
         )
         yield OverviewTab(id="overview-tab")
         yield TrackerTab(id="tracker-tab")
-        yield _Footer()
+        yield PressedFooter()
 
     def on_mount(self) -> None:
         if not config.PROJECT:
@@ -116,9 +107,7 @@ class VertexExplorer(App):
 
         def _on_dismiss(needs_refresh: bool) -> None:
             self._persistent_pressed.discard("settings")
-            for key in self.query(FooterKey):
-                if key.action == "settings":
-                    key.remove_class("-pressed")
+            self.query_one(PressedFooter).clear_pressed("settings")
             if needs_refresh:
                 self.action_refresh()
 
@@ -265,11 +254,9 @@ class VertexExplorer(App):
     def _flash_key(self, action: str, *, auto_clear: bool = True) -> None:
         if not auto_clear:
             self._persistent_pressed.add(action)
-        for key in self.query(FooterKey):
-            if key.action == action:
-                key.add_class("-pressed")
-                if auto_clear:
-                    self.set_timer(0.15, lambda k=key: k.remove_class("-pressed"))
+        self.query_one(PressedFooter).flash(action)
+        if auto_clear:
+            self.set_timer(0.15, lambda: self.query_one(PressedFooter).clear_pressed(action))
 
     def update_binding_highlights(self) -> None:
         toggled = {}
@@ -289,8 +276,7 @@ class VertexExplorer(App):
                 "toggle_failed": tab.show_failed,
                 "toggle_cancelled": tab.show_cancelled,
             }
-        for key in self.query(FooterKey):
-            key.set_class(toggled.get(key.action, False), "-toggled")
+        self.query_one(PressedFooter).set_toggled(toggled)
 
     def repopulate(self) -> None:
         self.query_one(OverviewTab).repopulate()
