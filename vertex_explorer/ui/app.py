@@ -1,4 +1,5 @@
 import os
+import webbrowser
 
 import pendulum
 from textual import work
@@ -7,11 +8,12 @@ from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.reactive import reactive
 from textual.screen import ModalScreen
-from textual.widgets import Input, Label
+from textual.widgets import DataTable, Input, Label
 
 import vertex_explorer.config as config
 from vertex_explorer.client import fetch_all
 from vertex_explorer.processor import build_runs_index, build_schedules
+from vertex_explorer.ui.formatters import console_url
 from vertex_explorer.ui.overview import OverviewTab
 from vertex_explorer.ui.settings import SettingsScreen
 from vertex_explorer.ui.tracker import TrackerTab
@@ -23,6 +25,7 @@ class VertexExplorer(App):
     BINDINGS = [
         Binding("R", "refresh", "Refresh"),
         Binding("o", "open", "Open"),
+        Binding("O", "shift_open", show=False),
         Binding("s", "settings", "Settings"),
         Binding("q", "quit", "Quit"),
         Binding("escape", "escape", show=False, priority=True),
