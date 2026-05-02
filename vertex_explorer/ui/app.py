@@ -126,7 +126,21 @@ class VertexExplorer(App):
 
     def action_open(self) -> None:
         self._flash_key("open")
-        self._active_tab.action_open_current()
+        if res := self._focused_resource:
+            kind, name = res
+            webbrowser.open(console_url(name, kind))
+
+    def action_shift_open(self) -> None:
+        self._flash_key("open")
+        if not (res := self._focused_resource):
+            return
+        kind, name = res
+        if kind == "schedules":
+            webbrowser.open(console_url(name, "schedules"))
+            return
+        run = self.runs_by_name.get(name)
+        if run and run.schedule_name and not run.schedule_name.endswith("__unscheduled__"):
+            webbrowser.open(console_url(run.schedule_name, "schedules"))
 
     def action_settings(self) -> None:
         self._flash_key("settings", auto_clear=False)
