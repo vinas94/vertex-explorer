@@ -35,23 +35,22 @@ TrackerTab                                  { height: 1fr; display: none; }
 /* ── Settings dialog ──────────────────────────────────────────────────────── */
 
 SettingsScreen   { align: center middle; }
-#settings-dialog { width: 63; height: auto; background: $surface; border: solid $primary; padding: 1 2; }
+#settings-dialog { width: auto; height: auto; background: $surface; border: solid $primary; padding: 1 2; }
 
-#settings-header { height: 1; margin-bottom: 1; }
+#settings-header { width: 100%; height: 1; margin-bottom: 1; }
 #settings-title  { width: 1fr; text-style: bold; }
 #settings-hint   { width: auto; content-align: right middle; text-style: italic; color: $text-muted; }
 
-#settings-columns           { height: auto; }
-.settings-col               { height: auto; }
-.settings-col:first-of-type { width: 19; }   /* 16 (label) + 3 (input) */
-.settings-col:last-of-type  { width: 1fr; margin-left: 2; }
+#settings-columns           { width: auto; height: auto; }
+.settings-col               { width: auto; height: auto; }
+.settings-col:last-of-type  { margin-left: 2; }
 
-.settings-row                              { height: 1; margin-bottom: 1; }
-.settings-col .settings-row Input          { height: 1; border: none; padding: 0; }
+.settings-row                                    { width: auto; height: 1; margin-bottom: 1; }
+.settings-col .settings-row Input                { height: 1; border: none; padding: 0; }
 .settings-col:first-of-type .settings-label      { width: 16; }
 .settings-col:first-of-type .settings-row Input  { width: 3; }
 .settings-col:last-of-type  .settings-label      { width: 9; }
-.settings-col:last-of-type  .settings-row Input  { width: 1fr; }
+.settings-col:last-of-type  .settings-row Input  { width: 27; }
 
-.settings-tick                            { height: 1; width: 3; padding: 0; background: transparent; }
-Input.-cursor, .settings-tick.-cursor     { background: $accent 30%; }
+.settings-tick                          { height: 1; width: 3; padding: 0; background: transparent; }
+Input.-cursor, .settings-tick.-cursor   { background: $accent 30%; }
