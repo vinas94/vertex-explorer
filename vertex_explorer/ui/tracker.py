@@ -129,8 +129,8 @@ class TrackerTab(Vertical):
             event.stop()
 
     def _on_scroll_y(self, scroll_y: float) -> None:
-        t = self.query_one("#tracker-table", DataTable)
-        if self.app.runs and 0 < t.max_scroll_y <= scroll_y:
+        table = self.query_one("#tracker-table", DataTable)
+        if self.app.runs and 0 < table.max_scroll_y <= scroll_y:
             self._load_more()
 
     # ── helpers ───────────────────────────────────────────────────────────────
@@ -194,6 +194,16 @@ class TrackerTab(Vertical):
         if visible != total:
             return f"{visible}/{total} runs"
         return f"{total} runs"
+
+    @property
+    def toggled(self) -> dict[str, bool]:
+        return {
+            "focus_filter": bool(self.filter),
+            "toggle_region": self.region_ is not None,
+            "toggle_running": self.running,
+            "toggle_failed": self.failed,
+            "toggle_cancelled": self.cancelled,
+        }
 
     @property
     def _filtered_runs(self) -> list:

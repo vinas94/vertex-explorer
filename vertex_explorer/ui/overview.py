@@ -318,6 +318,14 @@ class OverviewTab(Vertical):
         return f"{total} schedules"
 
     @property
+    def toggled(self) -> dict[str, bool]:
+        return {
+            "focus_filter": bool(self.filter),
+            "toggle_region": self.region_ is not None,
+            "toggle_active": self.active,
+        }
+
+    @property
     def _selected_schedule(self) -> str | None:
         st = self.query_one("#schedules-table", DataTable)
         if not st.row_count:

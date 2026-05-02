@@ -73,6 +73,9 @@ class SettingsInput(Input):
     def _on_focus(self, event) -> None:
         self._original_value = self.value
 
+    def revert(self) -> None:
+        self.value = self._original_value
+
     async def _on_click(self, event) -> None:
         self.can_focus = True
         self.focus()
