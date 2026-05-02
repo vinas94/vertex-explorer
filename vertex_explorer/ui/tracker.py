@@ -180,10 +180,10 @@ class TrackerTab(Vertical):
             start = Text(fmt_time(run.start_time), style="red" if recent_fail else "")
             end = Text(fmt_time(run.end_time))
             duration = Text(fmt_duration(run.start_time, run.end_time))
-            sched = schedules_by_name.get(run.schedule_name) if run.schedule_name else None
-            cron = sched["cron"] if sched else ""
-            next_run = fmt_time(sched["nextRunTime"]) if sched else ""
-            prev = run_dots(runs_by_schedule.get(run.schedule_name, [])) if run.schedule_name else ""
+            sched = schedules_by_name.get(run.schedule_name, {})
+            cron = sched.get("cron")
+            next_run = fmt_time(sched.get("nextRunTime"))
+            prev = run_dots(runs_by_schedule.get(run.schedule_name, []))
             name = Text(fmt_name(run.name))
             table.add_row(region, state, cron, next_run, prev, start, end, duration, name, key=run.name)
 

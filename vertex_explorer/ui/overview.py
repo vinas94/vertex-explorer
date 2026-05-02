@@ -107,9 +107,9 @@ class OverviewTab(Vertical):
                 and self._filtered_unscheduled_runs(schedule["name"])
             ]
             for sched in sorted(self._filtered_schedules + synthetic_scheds, key=_sort_key, reverse=True):
-                name = sched["name"]
-                state = sched.get("state", "")
-                display_name = sched.get("display_name", "")
+                name = sched.get("name")
+                state = sched.get("state")
+                display_name = sched.get("display_name")
                 synthetic = sched.get("_synthetic")
 
                 _, filter_terms = parse_filter(self.filter)
@@ -124,7 +124,7 @@ class OverviewTab(Vertical):
                 table.add_row(
                     fmt_region(name),
                     Text(state, style="green" if state == "ACTIVE" else "dim" if not synthetic else ""),
-                    sched.get("cron", ""),
+                    sched.get("cron"),
                     fmt_time(sched.get("nextRunTime")),
                     run_dots(runs_by_schedule.get(name, [])),
                     name_cell,
@@ -338,5 +338,5 @@ class OverviewTab(Vertical):
             if not schedules.get("_synthetic")
             and (not self.active or schedules.get("state") == "ACTIVE")
             and (not self.region_ or schedules["name"].split("/")[3] == self.region_)
-            and (not predicate or predicate(schedules.get("display_name", "")))
+            and (not predicate or predicate(schedules.get("display_name")))
         ]
