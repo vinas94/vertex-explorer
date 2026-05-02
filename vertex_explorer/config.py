@@ -19,6 +19,8 @@ RUNS_DAYS = 14
 SCHEDULES_DAYS = 14
 
 SHORT_REGIONS = True
+TRACKER_FILTERS = []
+
 RUNS_PAGE_SIZE = 100
 RUN_STATE_STYLE = {
     "PIPELINE_STATE_SUCCEEDED": "green",
@@ -30,7 +32,7 @@ RUN_STATE_STYLE = {
 
 
 def load_settings() -> None:
-    global PROJECT, REGIONS, RUNS_DAYS, SCHEDULES_DAYS, SHORT_REGIONS
+    global PROJECT, REGIONS, RUNS_DAYS, SCHEDULES_DAYS, SHORT_REGIONS, TRACKER_FILTERS
 
     try:
         data = json.loads(_SETTINGS_PATH.read_text())
@@ -43,6 +45,7 @@ def load_settings() -> None:
         RUNS_DAYS = data.get("RUNS_DAYS", RUNS_DAYS)
         SCHEDULES_DAYS = data.get("SCHEDULES_DAYS", SCHEDULES_DAYS)
         SHORT_REGIONS = bool(data.get("SHORT_REGIONS", SHORT_REGIONS))
+        TRACKER_FILTERS = [s for line in data.get("TRACKER_FILTERS", TRACKER_FILTERS) if (s := line.strip())]
     except Exception:
         pass
 
@@ -57,6 +60,7 @@ def save_settings() -> None:
                 "RUNS_DAYS": RUNS_DAYS,
                 "SCHEDULES_DAYS": SCHEDULES_DAYS,
                 "SHORT_REGIONS": SHORT_REGIONS,
+                "TRACKER_FILTERS": TRACKER_FILTERS,
             },
             indent=2,
         )

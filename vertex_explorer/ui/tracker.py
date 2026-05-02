@@ -44,6 +44,8 @@ class TrackerTab(Vertical):
         t = self.query_one("#tracker-table", DataTable)
         t.cursor_type = "row"
         self.watch(t, "scroll_y", self._on_scroll_y)
+        if config.TRACKER_FILTERS:
+            self.query_one("#tracker-filters", TextArea).load_text("\n".join(config.TRACKER_FILTERS))
 
     # ── focus ─────────────────────────────────────────────────────────────────
 
@@ -96,6 +98,8 @@ class TrackerTab(Vertical):
     def watch_filter(self) -> None:
         self.repopulate()
         self.app.update_binding_highlights()
+        config.TRACKER_FILTERS = [line for line in self.filter.splitlines() if line.strip()]
+        config.save_settings()
 
     def action_toggle_region(self) -> None:
         cycle = dict(zip([None, *config.REGIONS], [*config.REGIONS, None]))
