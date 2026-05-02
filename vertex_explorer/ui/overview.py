@@ -48,46 +48,19 @@ class OverviewTab(Vertical):
         rt.cursor_type = "row"
         self.watch(rt, "scroll_y", self._on_runs_scroll_y)
 
+    # ── focus ─────────────────────────────────────────────────────────────────
+
     def focus_default(self) -> None:
         self.query_one("#schedules-table", DataTable).focus()
 
     def blur_active_input(self, target=None) -> bool:
         return self._blur_filter(target)
 
-    # ── actions ───────────────────────────────────────────────────────────────
-
-    def action_focus_filter(self) -> None:
-        self.query_one("#filter-input", Input).focus()
-
-    def watch_filter(self) -> None:
-        self.repopulate_schedules()
-        self.repopulate_runs()
-        self.app.update_binding_highlights()
-
-    def action_toggle_region(self) -> None:
-        cycle = dict(zip([None, *config.REGIONS], [*config.REGIONS, None]))
-        self.region_ = cycle[self.region_]
-        self.repopulate_schedules()
-        self.app.update_binding_highlights()
-
-    def action_toggle_active(self) -> None:
-        self.active = not self.active
-        self.repopulate_schedules()
-        self.app.update_binding_highlights()
-
-    def action_focus_right(self) -> None:
-        st = self.query_one("#schedules-table", DataTable)
-        if st.has_focus:
-            self.query_one("#runs-table", DataTable).focus()
-
-    def action_focus_left(self) -> None:
-        rt = self.query_one("#runs-table", DataTable)
-        if rt.has_focus:
-            self.query_one("#schedules-table", DataTable).focus()
-
     def escape(self) -> None:
         if self._blur_filter():
             self.focus_default()
+
+    # ── render ────────────────────────────────────────────────────────────────
 
     def reset(self) -> None:
         self._current_schedule = None
@@ -257,6 +230,88 @@ class OverviewTab(Vertical):
                     runs_table.move_cursor(row=idx)
                     break
 
+    def update_dots(self) -> None:
+        table = self.query_one("#schedules-table", DataTable)
+        for row_key in table.rows:
+            dots = run_dots(self.app.runs_by_schedule.get(row_key.value, []))
+            table.update_cell(row_key, self._st_prev_col, dots)
+
+    # ── actions ───────────────────────────────────────────────────────────────
+
+    def action_focus_filter(self) -> None:
+        self.query_one("#filter-input", Input).focus()
+
+    def watch_filter(self) -> None:
+        self.repopulate_schedules()
+        self.repopulate_runs()
+        self.app.update_binding_highlights()
+
+    def action_toggle_region(self) -> None:
+        cycle = dict(zip([None, *config.REGIONS], [*config.REGIONS, None]))
+        self.region_ = cycle[self.region_]
+        self.repopulate_schedules()
+        self.app.update_binding_highlights()
+
+    def action_toggle_active(self) -> None:
+        self.active = not self.active
+        self.repopulate_schedules()
+        self.app.update_binding_highlights()
+
+    def action_focus_right(self) -> None:
+        st = self.query_one("#schedules-table", DataTable)
+        if st.has_focus:
+            self.query_one("#runs-table", DataTable).focus()
+
+    def action_focus_left(self) -> None:
+        rt = self.query_one("#runs-table", DataTable)
+        if rt.has_focus:
+            self.query_one("#schedules-table", DataTable).focus()
+
+    # ── events ────────────────────────────────────────────────────────────────
+
+    @on(Input.Changed, "#filter-input")
+    def _on_filter_changed(self, event: Input.Changed) -> None:
+        self.filter = event.value.strip()
+
+    @on(Input.Submitted, "#filter-input")
+    def _on_filter_submitted(self, _: Input.Submitted) -> None:
+        fi = self.query_one("#filter-input", Input)
+        fi.value = fi.value.strip()
+        self.focus_default()
+
+    @on(DataTable.RowHighlighted, "#schedules-table")
+    @on(DataTable.RowSelected, "#schedules-table")
+    def _on_schedule_highlighted(self, event: DataTable.RowHighlighted | DataTable.RowSelected) -> None:
+        if event.row_key.value != self._current_schedule:
+            self.repopulate_runs(event.row_key.value)
+
+    @on(DataTable.RowHighlighted, "#runs-table")
+    def _on_run_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        if self._current_schedule and event.cursor_row == event.data_table.row_count - 1:
+            self._load_more_runs()
+
+    def on_key(self, event) -> None:
+        if event.key in ("ctrl+j", "shift+enter") and self._blur_filter():
+            event.stop()
+
+    def _on_runs_scroll_y(self, scroll_y: float) -> None:
+        table = self.query_one("#runs-table", DataTable)
+        if self._current_schedule and 0 < table.max_scroll_y <= scroll_y:
+            self._load_more_runs()
+
+    # ── helpers ───────────────────────────────────────────────────────────────
+
+    def _blur_filter(self, target=None) -> bool:
+        filters = self.query_one("#filter-input", Input)
+        if filters.has_focus and target is not filters:
+            filters.value = filters.value.strip()
+            if isinstance(target, DataTable):
+                target.focus()
+            else:
+                self.focus_default()
+            return True
+        return False
+
     def _load_more_runs(self) -> None:
         selected = self._current_schedule
         is_unscheduled = selected.endswith("__unscheduled__")
@@ -306,12 +361,7 @@ class OverviewTab(Vertical):
                 extra = (highlight(run_name, filter_terms) if filter_terms else Text(run_name),)
             table.add_row(state, start, duration, *extra, key=run.name)
 
-    @property
-    def _selected_schedule(self) -> str | None:
-        st = self.query_one("#schedules-table", DataTable)
-        if not st.row_count:
-            return None
-        return st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
+    # ── properties ────────────────────────────────────────────────────────────
 
     @property
     def notification(self) -> str:
@@ -322,6 +372,13 @@ class OverviewTab(Vertical):
         if visible != total:
             return f"{visible}/{total} schedules"
         return f"{total} schedules"
+
+    @property
+    def _selected_schedule(self) -> str | None:
+        st = self.query_one("#schedules-table", DataTable)
+        if not st.row_count:
+            return None
+        return st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
 
     @property
     def _filtered_schedules(self) -> list:

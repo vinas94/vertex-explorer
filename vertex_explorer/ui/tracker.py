@@ -45,11 +45,48 @@ class TrackerTab(Vertical):
         t.cursor_type = "row"
         self.watch(t, "scroll_y", self._on_scroll_y)
 
+    # ── focus ─────────────────────────────────────────────────────────────────
+
     def focus_default(self) -> None:
         self.query_one("#tracker-table", DataTable).focus()
 
     def blur_active_input(self, target=None) -> bool:
         return self._blur_filters(target)
+
+    def escape(self) -> None:
+        self._blur_filters()
+
+    # ── render ────────────────────────────────────────────────────────────────
+
+    def reset(self) -> None:
+        self._offset = 0
+        self.region_ = None
+        self.query_one("#tracker-table", DataTable).clear(columns=True)
+
+    def repopulate(self) -> None:
+        t = self.query_one("#tracker-table", DataTable)
+
+        try:
+            saved_key = t.coordinate_to_cell_key(t.cursor_coordinate).row_key.value
+        except Exception:
+            saved_key = None
+
+        hover = t.hover_coordinate
+        t.clear(columns=True)
+        t.hover_coordinate = hover
+        t.add_columns("Region", "Status", "Cron", "Next Run", "Prev", "Start", "End", "Duration", "Name")
+
+        runs = self._filtered_runs
+        self._append_rows(t, runs[: config.RUNS_PAGE_SIZE])
+        self._offset = config.RUNS_PAGE_SIZE
+
+        if saved_key:
+            for idx, row_key in enumerate(t.rows):
+                if row_key.value == saved_key:
+                    t.move_cursor(row=idx)
+                    break
+
+        self.app.refresh_status()
 
     # ── actions ───────────────────────────────────────────────────────────────
 
@@ -81,9 +118,6 @@ class TrackerTab(Vertical):
         self.repopulate()
         self.app.update_binding_highlights()
 
-    def escape(self) -> None:
-        self._blur_filters()
-
     # ── events ────────────────────────────────────────────────────────────────
 
     @on(TextArea.Changed, "#tracker-filters")
@@ -94,12 +128,12 @@ class TrackerTab(Vertical):
         if event.key in ("ctrl+j", "shift+enter") and self._blur_filters():
             event.stop()
 
-    def _strip_filters(self) -> None:
-        filters = self.query_one("#tracker-filters", TextArea)
-        stripped = "\n".join(line.strip() for line in filters.text.splitlines()).strip()
-        if stripped != filters.text:
-            filters.load_text(stripped)
-        self.filter = stripped
+    def _on_scroll_y(self, scroll_y: float) -> None:
+        t = self.query_one("#tracker-table", DataTable)
+        if self.app.runs and 0 < t.max_scroll_y <= scroll_y:
+            self._load_more()
+
+    # ── helpers ───────────────────────────────────────────────────────────────
 
     def _blur_filters(self, target=None) -> bool:
         filters = self.query_one("#tracker-filters", TextArea)
@@ -112,42 +146,12 @@ class TrackerTab(Vertical):
             return True
         return False
 
-    def repopulate(self) -> None:
-        t = self.query_one("#tracker-table", DataTable)
-
-        try:
-            saved_key = t.coordinate_to_cell_key(t.cursor_coordinate).row_key.value
-        except Exception:
-            saved_key = None
-
-        hover = t.hover_coordinate
-        t.clear(columns=True)
-        t.hover_coordinate = hover
-        t.add_columns("Region", "Status", "Cron", "Next Run", "Prev", "Start", "End", "Duration", "Name")
-
-        runs = self._filtered_runs
-        self._append_rows(t, runs[: config.RUNS_PAGE_SIZE])
-        self._offset = config.RUNS_PAGE_SIZE
-
-        if saved_key:
-            for idx, row_key in enumerate(t.rows):
-                if row_key.value == saved_key:
-                    t.move_cursor(row=idx)
-                    break
-
-        self.app.refresh_status()
-
-    def reset(self) -> None:
-        self._offset = 0
-        self.region_ = None
-        self.query_one("#tracker-table", DataTable).clear(columns=True)
-
-    # ── rendering ─────────────────────────────────────────────────────────────
-
-    def _on_scroll_y(self, scroll_y: float) -> None:
-        t = self.query_one("#tracker-table", DataTable)
-        if self.app.runs and 0 < t.max_scroll_y <= scroll_y:
-            self._load_more()
+    def _strip_filters(self) -> None:
+        filters = self.query_one("#tracker-filters", TextArea)
+        stripped = "\n".join(line.strip() for line in filters.text.splitlines()).strip()
+        if stripped != filters.text:
+            filters.load_text(stripped)
+        self.filter = stripped
 
     def _load_more(self) -> None:
         runs = self._filtered_runs
@@ -178,6 +182,8 @@ class TrackerTab(Vertical):
             prev = run_dots(runs_by_schedule.get(run.schedule_name, [])) if run.schedule_name else ""
             name = Text(fmt_name(run.name))
             table.add_row(region, state, cron, next_run, prev, start, end, duration, name, key=run.name)
+
+    # ── properties ────────────────────────────────────────────────────────────
 
     @property
     def notification(self) -> str:
