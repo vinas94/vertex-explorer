@@ -68,51 +68,6 @@ class OverviewTab(Vertical):
         self.query_one("#schedules-table", DataTable).clear(columns=True)
         self.query_one("#runs-table", DataTable).clear(columns=True)
 
-    # ── events ────────────────────────────────────────────────────────────────
-
-    @on(Input.Changed, "#filter-input")
-    def _on_filter_changed(self, event: Input.Changed) -> None:
-        self.filter = event.value.strip()
-
-    @on(Input.Submitted, "#filter-input")
-    def _on_filter_submitted(self, _: Input.Submitted) -> None:
-        fi = self.query_one("#filter-input", Input)
-        fi.value = fi.value.strip()
-        self.focus_default()
-
-    def on_key(self, event) -> None:
-        if event.key in ("ctrl+j", "shift+enter") and self._blur_filter():
-            event.stop()
-
-    @on(DataTable.RowHighlighted, "#schedules-table")
-    @on(DataTable.RowSelected, "#schedules-table")
-    def _on_schedule_highlighted(self, event: DataTable.RowHighlighted | DataTable.RowSelected) -> None:
-        if event.row_key.value != self._current_schedule:
-            self.repopulate_runs(event.row_key.value)
-
-    @on(DataTable.RowHighlighted, "#runs-table")
-    def _on_run_highlighted(self, event: DataTable.RowHighlighted) -> None:
-        if self._current_schedule and event.cursor_row == event.data_table.row_count - 1:
-            self._load_more_runs()
-
-    def _on_runs_scroll_y(self, scroll_y: float) -> None:
-        table = self.query_one("#runs-table", DataTable)
-        if self._current_schedule and 0 < table.max_scroll_y <= scroll_y:
-            self._load_more_runs()
-
-    def _blur_filter(self, target=None) -> bool:
-        fi = self.query_one("#filter-input", Input)
-        if fi.has_focus and target is not fi:
-            fi.value = fi.value.strip()
-            if isinstance(target, DataTable):
-                target.focus()
-            else:
-                self.focus_default()
-            return True
-        return False
-
-    # ── rendering ─────────────────────────────────────────────────────────────
-
     def repopulate(self) -> None:
         self.repopulate_schedules()
         self.repopulate_runs()
@@ -337,12 +292,6 @@ class OverviewTab(Vertical):
             return runs
 
         return [run for run in runs if run.name and predicate(fmt_name(run.name))]
-
-    def update_dots(self) -> None:
-        table = self.query_one("#schedules-table", DataTable)
-        for row_key in table.rows:
-            dots = run_dots(self.app.runs_by_schedule.get(row_key.value, []))
-            table.update_cell(row_key, self._st_prev_col, dots)
 
     @staticmethod
     def _append_run_rows(table: DataTable, runs: list, is_unscheduled: bool, filter_terms: list[str]) -> None:
