@@ -6,7 +6,7 @@ from textual import on
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
-from textual.widgets import Label, TextArea
+from textual.widgets import Label
 
 import vertex_explorer.config as config
 from vertex_explorer.filters import parse_filter
@@ -18,7 +18,7 @@ from vertex_explorer.ui.formatters import (
     fmt_time,
     run_dots,
 )
-from vertex_explorer.ui.widgets import FilterTextArea, RefreshingDataTable
+from vertex_explorer.ui.widgets import DataTable, TextArea
 
 
 class TrackerTab(Vertical):
@@ -47,16 +47,16 @@ class TrackerTab(Vertical):
         with Horizontal():
             with Vertical(id="tracker-left"):
                 yield Label("Filters")
-                yield FilterTextArea(id="tracker-filters")
-            yield RefreshingDataTable(id="tracker-table", cursor_foreground_priority="renderable")
+                yield TextArea(id="tracker-filters")
+            yield DataTable(id="tracker-table", cursor_foreground_priority="renderable")
 
     def on_mount(self) -> None:
-        t = self.query_one("#tracker-table", RefreshingDataTable)
+        t = self.query_one("#tracker-table", DataTable)
         t.cursor_type = "row"
         self.watch(t, "scroll_y", self._on_scroll_y)
 
     def focus_default(self) -> None:
-        self.query_one("#tracker-table", RefreshingDataTable).focus()
+        self.query_one("#tracker-table", DataTable).focus()
 
     def blur_active_input(self, target=None) -> bool:
         return self._blur_filters(target)
@@ -88,7 +88,7 @@ class TrackerTab(Vertical):
         self.app.update_binding_highlights()
 
     def action_open_current(self) -> None:
-        t = self.query_one("#tracker-table", RefreshingDataTable)
+        t = self.query_one("#tracker-table", DataTable)
         try:
             name = t.coordinate_to_cell_key(t.cursor_coordinate).row_key.value
             if name:
@@ -97,7 +97,7 @@ class TrackerTab(Vertical):
             pass
 
     def action_open_schedule(self) -> None:
-        t = self.query_one("#tracker-table", RefreshingDataTable)
+        t = self.query_one("#tracker-table", DataTable)
         try:
             run_name = t.coordinate_to_cell_key(t.cursor_coordinate).row_key.value
             if run_name:
@@ -133,7 +133,7 @@ class TrackerTab(Vertical):
         filters = self.query_one("#tracker-filters", TextArea)
         if filters.has_focus and target is not filters:
             self._strip_filters()
-            if isinstance(target, RefreshingDataTable):
+            if isinstance(target, DataTable):
                 target.focus()
             else:
                 self.focus_default()
@@ -141,7 +141,7 @@ class TrackerTab(Vertical):
         return False
 
     def repopulate(self) -> None:
-        t = self.query_one("#tracker-table", RefreshingDataTable)
+        t = self.query_one("#tracker-table", DataTable)
 
         try:
             saved_key = t.coordinate_to_cell_key(t.cursor_coordinate).row_key.value
@@ -168,12 +168,12 @@ class TrackerTab(Vertical):
     def reset(self) -> None:
         self._offset = 0
         self.region_ = None
-        self.query_one("#tracker-table", RefreshingDataTable).clear(columns=True)
+        self.query_one("#tracker-table", DataTable).clear(columns=True)
 
     # ── rendering ─────────────────────────────────────────────────────────────
 
     def _on_scroll_y(self, scroll_y: float) -> None:
-        t = self.query_one("#tracker-table", RefreshingDataTable)
+        t = self.query_one("#tracker-table", DataTable)
         if self.app.runs and 0 < t.max_scroll_y <= scroll_y:
             self._load_more()
 
@@ -182,11 +182,11 @@ class TrackerTab(Vertical):
         batch = runs[self._offset : self._offset + config.RUNS_PAGE_SIZE]
         if not batch:
             return
-        t = self.query_one("#tracker-table", RefreshingDataTable)
+        t = self.query_one("#tracker-table", DataTable)
         self._append_rows(t, batch)
         self._offset += len(batch)
 
-    def _append_rows(self, table: RefreshingDataTable, runs: list) -> None:
+    def _append_rows(self, table: DataTable, runs: list) -> None:
         schedules_by_name = {s["name"]: s for s in self.app.schedules}
         runs_by_schedule = self.app.runs_by_schedule
         cutoff_24h = pendulum.now("UTC").subtract(hours=24)

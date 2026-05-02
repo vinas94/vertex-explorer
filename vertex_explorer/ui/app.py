@@ -15,7 +15,7 @@ from vertex_explorer.processor import build_runs_index, build_schedules
 from vertex_explorer.ui.overview import OverviewTab
 from vertex_explorer.ui.settings import SettingsScreen
 from vertex_explorer.ui.tracker import TrackerTab
-from vertex_explorer.ui.widgets import PressedFooter
+from vertex_explorer.ui.widgets import Footer
 
 
 class VertexExplorer(App):
@@ -64,7 +64,7 @@ class VertexExplorer(App):
         )
         yield OverviewTab(id="overview-tab")
         yield TrackerTab(id="tracker-tab")
-        yield PressedFooter()
+        yield Footer()
 
     def on_mount(self) -> None:
         if not config.PROJECT:
@@ -107,7 +107,7 @@ class VertexExplorer(App):
 
         def _on_dismiss(needs_refresh: bool) -> None:
             self._persistent_pressed.discard("settings")
-            self.query_one(PressedFooter).clear_pressed("settings")
+            self.query_one(Footer).clear_pressed("settings")
             if needs_refresh:
                 self.action_refresh()
 
@@ -254,9 +254,9 @@ class VertexExplorer(App):
     def _flash_key(self, action: str, *, auto_clear: bool = True) -> None:
         if not auto_clear:
             self._persistent_pressed.add(action)
-        self.query_one(PressedFooter).flash(action)
+        self.query_one(Footer).flash(action)
         if auto_clear:
-            self.set_timer(0.15, lambda: self.query_one(PressedFooter).clear_pressed(action))
+            self.set_timer(0.15, lambda: self.query_one(Footer).clear_pressed(action))
 
     def update_binding_highlights(self) -> None:
         toggled = {}
@@ -276,7 +276,7 @@ class VertexExplorer(App):
                 "toggle_failed": tab.show_failed,
                 "toggle_cancelled": tab.show_cancelled,
             }
-        self.query_one(PressedFooter).set_toggled(toggled)
+        self.query_one(Footer).set_toggled(toggled)
 
     def repopulate(self) -> None:
         self.query_one(OverviewTab).repopulate()

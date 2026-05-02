@@ -5,7 +5,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Input, Label
 
 import vertex_explorer.config as config
-from vertex_explorer.ui.widgets import SettingsNavInput, Tick
+from vertex_explorer.ui.widgets import SettingsNavInput, Static
 
 _GRID = [
     [("Runs Days", "s-runs-days"), ("Project", "s-project")],
@@ -45,7 +45,7 @@ class SettingsScreen(ModalScreen[bool]):
                             with Horizontal(classes="setting-row"):
                                 yield Label(lbl, classes="setting-label")
                                 if kind and kind[0] == "checkbox":
-                                    yield Tick(value=config.SHORT_REGIONS, id=id_, classes="setting-tick")
+                                    yield Static(value=config.SHORT_REGIONS, id=id_, classes="setting-tick")
                                 else:
                                     yield SettingsNavInput(_current_value(id_), id=id_)
                 with Vertical(classes="settings-col"):
@@ -56,7 +56,7 @@ class SettingsScreen(ModalScreen[bool]):
                             with Horizontal(classes="setting-row"):
                                 yield Label(lbl, classes="setting-label")
                                 if kind and kind[0] == "checkbox":
-                                    yield Tick(value=config.SHORT_REGIONS, id=id_, classes="setting-tick")
+                                    yield Static(value=config.SHORT_REGIONS, id=id_, classes="setting-tick")
                                 else:
                                     yield SettingsNavInput(_current_value(id_), id=id_)
 
@@ -96,7 +96,7 @@ class SettingsScreen(ModalScreen[bool]):
             cell = _GRID[row][col]
             _, id_, *kind = cell
             if kind and kind[0] == "checkbox":
-                self.query_one(f"#{id_}", Tick).toggle()
+                self.query_one(f"#{id_}", Static).toggle()
             else:
                 inp = self.query_one(f"#{id_}", Input)
                 inp.can_focus = True
@@ -153,7 +153,7 @@ class SettingsScreen(ModalScreen[bool]):
         new_schedules_days = _int("#s-schedules-days", config.SCHEDULES_DAYS)
         new_project = self.query_one("#s-project", Input).value.strip()
         new_regions = _list("#s-regions")
-        new_short_regions = self.query_one("#s-short-regions", Tick).value
+        new_short_regions = self.query_one("#s-short-regions", Static).value
 
         needs_refresh = (
             new_project != config.PROJECT
