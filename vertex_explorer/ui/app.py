@@ -158,6 +158,9 @@ class VertexExplorer(App):
             if hasattr(self.screen, "tab_next"):
                 self.screen.tab_next()
             return
+        blur_input = getattr(self._active_tab, "blur_active_input", None)
+        if blur_input:
+            return
         self.tab = self.TABS[(self.TABS.index(self.tab) + 1) % len(self.TABS)]
 
     def watch_tab(self) -> None:

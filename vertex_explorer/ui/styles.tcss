@@ -17,7 +17,7 @@ FooterKey.-pressed .footer-key--key { background: $accent; color: $text; }
 FooterKey.-pressed .footer-key--description { color: $accent; }
 
 TrackerTab { height: 1fr; display: none; }
-#tracker-left { width: 20%; padding: 2 3; }
+#tracker-left { width: 20%; padding: 2 4; }
 #tracker-filters .text-area--cursor-line { background: $surface; }
 #tracker-filters { border: none; }
 #tracker-filters:focus { border: none; }
