@@ -33,9 +33,9 @@ class TrackerTab(Vertical):
 
     filter: reactive[str] = reactive("", init=False)
     region_: reactive[str | None] = reactive(None)
-    show_running: reactive[bool] = reactive(False)
-    show_failed: reactive[bool] = reactive(False)
-    show_cancelled: reactive[bool] = reactive(False)
+    running: reactive[bool] = reactive(False)
+    failed: reactive[bool] = reactive(False)
+    cancelled: reactive[bool] = reactive(False)
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -66,6 +66,10 @@ class TrackerTab(Vertical):
     def action_focus_filter(self) -> None:
         self.query_one("#tracker-filters", TextArea).focus()
 
+    def watch_filter(self) -> None:
+        self.repopulate()
+        self.app.update_binding_highlights()
+
     def action_toggle_region(self) -> None:
         cycle = dict(zip([None, *config.REGIONS], [*config.REGIONS, None]))
         self.region_ = cycle[self.region_]
@@ -73,17 +77,17 @@ class TrackerTab(Vertical):
         self.app.update_binding_highlights()
 
     def action_toggle_running(self) -> None:
-        self.show_running = not self.show_running
+        self.running = not self.running
         self.repopulate()
         self.app.update_binding_highlights()
 
     def action_toggle_failed(self) -> None:
-        self.show_failed = not self.show_failed
+        self.failed = not self.failed
         self.repopulate()
         self.app.update_binding_highlights()
 
     def action_toggle_cancelled(self) -> None:
-        self.show_cancelled = not self.show_cancelled
+        self.cancelled = not self.cancelled
         self.repopulate()
         self.app.update_binding_highlights()
 
@@ -107,6 +111,11 @@ class TrackerTab(Vertical):
         except Exception:
             pass
 
+    def escape(self) -> None:
+        self._blur_filters()
+
+    # ── events ────────────────────────────────────────────────────────────────
+
     @on(TextArea.Changed, "#tracker-filters")
     def _on_filter_changed(self, event: TextArea.Changed) -> None:
         self.filter = event.text_area.text.strip()
@@ -114,13 +123,6 @@ class TrackerTab(Vertical):
     def on_key(self, event) -> None:
         if event.key in ("ctrl+j", "shift+enter") and self._blur_filters():
             event.stop()
-
-    def watch_filter(self) -> None:
-        self.repopulate()
-        self.app.update_binding_highlights()
-
-    def escape(self) -> None:
-        self._blur_filters()
 
     def _strip_filters(self) -> None:
         filters = self.query_one("#tracker-filters", TextArea)
@@ -226,13 +228,13 @@ class TrackerTab(Vertical):
             runs = [r for r in runs if r.name and any(p(fmt_name(r.name)) for p in predicates)]
         if self.region_:
             runs = [r for r in runs if r.name and r.name.split("/")[3] == self.region_]
-        if self.show_running or self.show_failed or self.show_cancelled:
+        if self.running or self.failed or self.cancelled:
             allowed = set()
-            if self.show_running:
+            if self.running:
                 allowed.add("PIPELINE_STATE_RUNNING")
-            if self.show_failed:
+            if self.failed:
                 allowed.add("PIPELINE_STATE_FAILED")
-            if self.show_cancelled:
+            if self.cancelled:
                 allowed.add("PIPELINE_STATE_CANCELLED")
                 allowed.add("PIPELINE_STATE_CANCELLING")
             runs = [r for r in runs if r.state.name in allowed]

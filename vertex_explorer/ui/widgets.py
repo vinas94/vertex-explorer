@@ -10,6 +10,7 @@ class DataTable(widgets.DataTable):
         super()._on_resize(event)
         self.refresh()
 
+
 class Footer(widgets.Footer):
     async def recompose(self) -> None:
         await super().recompose()

@@ -272,9 +272,9 @@ class VertexExplorer(App):
             toggled = {
                 "focus_filter": bool(tab.filter),
                 "toggle_region": tab.region_ is not None,
-                "toggle_running": tab.show_running,
-                "toggle_failed": tab.show_failed,
-                "toggle_cancelled": tab.show_cancelled,
+                "toggle_running": tab.running,
+                "toggle_failed": tab.failed,
+                "toggle_cancelled": tab.cancelled,
             }
         self.query_one(Footer).set_toggled(toggled)
 

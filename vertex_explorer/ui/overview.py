@@ -114,10 +114,6 @@ class OverviewTab(Vertical):
         if self._blur_filter():
             self.focus_default()
 
-    def repopulate(self) -> None:
-        self.repopulate_schedules()
-        self.repopulate_runs()
-
     def reset(self) -> None:
         self._current_schedule = None
         self._rt_name_col = None
@@ -168,6 +164,10 @@ class OverviewTab(Vertical):
         return False
 
     # ── rendering ─────────────────────────────────────────────────────────────
+
+    def repopulate(self) -> None:
+        self.repopulate_schedules()
+        self.repopulate_runs()
 
     def repopulate_schedules(self) -> None:
         table = self.query_one("#schedules-table", DataTable)
