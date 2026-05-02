@@ -139,13 +139,8 @@ class OverviewTab(Vertical):
 
             self.app.refresh_status(right=self.app.last_refresh.strftime("%H:%M:%S") if self.app.last_refresh else "")
 
-    def repopulate_runs(self, selected_schedule: str | None = None) -> None:
-        if selected_schedule is None:
-            selected_schedule = self._selected_schedule
-
-        if not selected_schedule:
-            self._current_schedule = None
-            return
+    def repopulate_runs(self) -> None:
+        selected_schedule = self._selected_schedule
 
         runs_table = self.query_one("#runs-table", DataTable)
         if not runs_table.columns:
@@ -230,15 +225,15 @@ class OverviewTab(Vertical):
 
     @on(Input.Submitted, "#filter-input")
     def _on_filter_submitted(self, _: Input.Submitted) -> None:
-        fi = self.query_one("#filter-input", Input)
-        fi.value = fi.value.strip()
+        filters = self.query_one("#filter-input", Input)
+        filters.value = filters.value.strip()
         self.focus_default()
 
     @on(DataTable.RowHighlighted, "#schedules-table")
     @on(DataTable.RowSelected, "#schedules-table")
     def _on_schedule_highlighted(self, event: DataTable.RowHighlighted | DataTable.RowSelected) -> None:
-        if event.row_key.value != self._current_schedule:
-            self.repopulate_runs(event.row_key.value)
+        if self.app.runs:
+            self.repopulate_runs()
 
     @on(DataTable.RowHighlighted, "#runs-table")
     def _on_run_highlighted(self, event: DataTable.RowHighlighted) -> None:
