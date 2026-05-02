@@ -330,6 +330,8 @@ class OverviewTab(Vertical):
     @property
     def _selected_schedule(self) -> str | None:
         st = self.query_one("#schedules-table", DataTable)
+        if not st.row_count:
+            return None
         return st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
 
     @property
