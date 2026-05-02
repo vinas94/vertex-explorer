@@ -168,8 +168,9 @@ class OverviewTab(Vertical):
         predicate, filter_terms = parse_filter(self.filter)
         if is_unscheduled and predicate:
             runs = [run for run in runs if run.name and predicate(fmt_name(run.name))]
-        self._append_run_rows(runs_table, runs[: config.RUNS_PAGE_SIZE], is_unscheduled, filter_terms)
-        self._run_offsets[selected_schedule] = config.RUNS_PAGE_SIZE
+        target_offset = max(self._run_offsets.get(selected_schedule, 0), config.RUNS_PAGE_SIZE)
+        self._append_run_rows(runs_table, runs[:target_offset], is_unscheduled, filter_terms)
+        self._run_offsets[selected_schedule] = target_offset
 
         self._current_schedule = selected_schedule
 
