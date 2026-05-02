@@ -36,7 +36,7 @@ SettingsScreen { align: center middle; }
 .settings-col:first-of-type .setting-row Input { width: 3; height: 1; border: none; padding: 0; }
 .settings-col:last-of-type .setting-label { width: 9; }
 .settings-col:last-of-type .setting-row Input { width: 1fr; height: 1; border: none; padding: 0; }
-Input.-cursor { background: $accent 30%; }
+Input.-cursor, .setting-tick.-cursor { background: $accent 30%; }
 .setting-tick { height: 1; width: 3; padding: 0; background: transparent; }
 Toast { width: auto; }
 
