@@ -84,6 +84,9 @@ class VertexExplorer(App):
         self.fetch_data()
 
     def on_click(self, event) -> None:
+        blur_input = getattr(self._active_tab, "blur_active_input", None)
+        if blur_input:
+            blur_input(event.widget)
         if event.widget and event.widget.id == "tab-overview":
             self.tab = "overview"
         elif event.widget and event.widget.id == "tab-tracker":

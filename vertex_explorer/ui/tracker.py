@@ -63,6 +63,9 @@ class TrackerTab(Vertical):
     def focus_default(self) -> None:
         self.query_one("#tracker-table", _DataTable).focus()
 
+    def blur_active_input(self, target=None) -> bool:
+        return self._blur_filters(target)
+
     # ── actions ───────────────────────────────────────────────────────────────
 
     def action_focus_filter(self) -> None:
@@ -118,10 +121,7 @@ class TrackerTab(Vertical):
         self.app.update_binding_highlights()
 
     def escape(self) -> None:
-        filters = self.query_one("#tracker-filters", TextArea)
-        if filters.has_focus:
-            self._strip_filters()
-            self.focus_default()
+        self._blur_filters()
 
     def _strip_filters(self) -> None:
         filters = self.query_one("#tracker-filters", TextArea)
@@ -129,6 +129,17 @@ class TrackerTab(Vertical):
         if stripped != filters.text:
             filters.load_text(stripped)
         self.filter = stripped
+
+    def _blur_filters(self, target=None) -> bool:
+        filters = self.query_one("#tracker-filters", TextArea)
+        if filters.has_focus and target is not filters:
+            self._strip_filters()
+            if isinstance(target, _DataTable):
+                target.focus()
+            else:
+                self.focus_default()
+            return True
+        return False
 
     def repopulate(self) -> None:
         t = self.query_one("#tracker-table", _DataTable)

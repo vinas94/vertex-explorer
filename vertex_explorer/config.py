@@ -15,8 +15,8 @@ _SETTINGS_PATH = Path.home() / ".config" / "vertex-explorer" / "settings.json"
 PROJECT = "martin-test-datalab"
 REGIONS = ["europe-west3", "europe-west4"]
 
-RUNS_DAYS = 3
-SCHEDULES_DAYS = 3
+RUNS_DAYS = 14
+SCHEDULES_DAYS = 14
 
 SHORT_REGIONS = True
 RUNS_PAGE_SIZE = 100

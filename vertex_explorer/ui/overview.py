@@ -72,6 +72,9 @@ class OverviewTab(Vertical):
     def focus_default(self) -> None:
         self.query_one("#schedules-table", _DataTable).focus()
 
+    def blur_active_input(self, target=None) -> bool:
+        return self._blur_filter(target)
+
     # ── actions ───────────────────────────────────────────────────────────────
 
     def action_focus_filter(self) -> None:
@@ -119,9 +122,7 @@ class OverviewTab(Vertical):
             self.query_one("#schedules-table", _DataTable).focus()
 
     def escape(self) -> None:
-        fi = self.query_one("#filter-input", _FilterInput)
-        if fi.has_focus:
-            fi.value = fi.value.strip()
+        if self._blur_filter():
             self.focus_default()
 
     def repopulate(self) -> None:
@@ -161,6 +162,17 @@ class OverviewTab(Vertical):
         table = self.query_one("#runs-table", _DataTable)
         if self._current_schedule and 0 < table.max_scroll_y <= scroll_y:
             self._load_more_runs()
+
+    def _blur_filter(self, target=None) -> bool:
+        fi = self.query_one("#filter-input", _FilterInput)
+        if fi.has_focus and target is not fi:
+            fi.value = fi.value.strip()
+            if isinstance(target, _DataTable):
+                target.focus()
+            else:
+                self.focus_default()
+            return True
+        return False
 
     # ── rendering ─────────────────────────────────────────────────────────────
 

@@ -36,6 +36,9 @@ class _NavInput(ClickableInput):
         self._original_value = self.value
 
     async def _on_click(self, event) -> None:
+        blur_input = getattr(self.screen, "_blur_input", None)
+        if blur_input:
+            blur_input(self)
         self.can_focus = True
         self.focus()
         self.screen.cursor = _GRID_POS[self.id]  # noqa
@@ -124,6 +127,10 @@ class SettingsScreen(ModalScreen[bool]):
         event.stop()
 
     def on_click(self, event) -> None:
+        if self._blur_input(event.widget):
+            if event.widget is self:
+                event.stop()
+            return
         if event.widget is self:
             self.dismiss(False)
 
@@ -135,6 +142,14 @@ class SettingsScreen(ModalScreen[bool]):
     def on_input_submitted(self, event: Input.Submitted) -> None:
         event.input.value = event.input.value.strip()
         self.set_focus(None)
+
+    def _blur_input(self, target=None) -> bool:
+        focused = self.focused
+        if isinstance(focused, Input) and focused is not target:
+            focused.value = focused.value.strip()
+            self.set_focus(None)
+            return True
+        return False
 
     def watch_cursor(self) -> None:
         row, col = self.cursor

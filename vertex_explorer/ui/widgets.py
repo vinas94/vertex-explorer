@@ -21,6 +21,9 @@ class Tick(Static):
         self.checked = not self.checked
 
     async def _on_click(self, event) -> None:
+        blur_input = getattr(self.screen, "_blur_input", None)
+        if blur_input:
+            blur_input(self)
         self.toggle()
         event.stop()
 
