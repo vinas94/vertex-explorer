@@ -334,7 +334,10 @@ class OverviewTab(Vertical):
         st = self.query_one("#schedules-table", DataTable)
         if not st.row_count:
             return None
-        return st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
+        try:
+            return st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
+        except CellDoesNotExist:
+            return None
 
     @property
     def _filtered_schedules(self) -> list[dict]:
