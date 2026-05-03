@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import pendulum
 from rich.text import Text
 from textual import on
@@ -5,11 +7,15 @@ from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
 from textual.widgets import Label
+from textual.widgets._data_table import CellDoesNotExist
 
 import vertex_explorer.config as config
 from vertex_explorer.filters import parse_filter
-from vertex_explorer.ui.formatters import fmt_duration, fmt_name, fmt_region, fmt_time, run_dots
+from vertex_explorer.ui.formatters import fmt_name, fmt_region, fmt_run_cells, fmt_time, run_dots
 from vertex_explorer.ui.widgets import DataTable, TextArea
+
+if TYPE_CHECKING:
+    from google.cloud.aiplatform_v1 import PipelineJob
 
 
 class TrackerTab(Vertical):
@@ -30,6 +36,7 @@ class TrackerTab(Vertical):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self._offset: int = 0
+        self._predicates: list = []
 
     # ── layout ────────────────────────────────────────────────────────────────
 
@@ -70,7 +77,7 @@ class TrackerTab(Vertical):
 
         try:
             saved_key = t.coordinate_to_cell_key(t.cursor_coordinate).row_key.value
-        except Exception:
+        except CellDoesNotExist:
             saved_key = None
 
         hover = t.hover_coordinate
@@ -96,12 +103,15 @@ class TrackerTab(Vertical):
         self.query_one("#tracker-filters", TextArea).focus()
 
     def watch_filter(self) -> None:
+        self._predicates = [
+            p for line in self.filter.splitlines() if line.strip() for p in [parse_filter(line)[0]] if p
+        ]
         self.repopulate()
         self.app.update_binding_highlights()
 
     def action_toggle_region(self) -> None:
-        cycle = dict(zip([None, *config.REGIONS], [*config.REGIONS, None]))
-        self.region_ = cycle[self.region_]
+        options = [None, *config.REGIONS]
+        self.region_ = options[(options.index(self.region_) + 1) % len(options)]
         self.repopulate()
         self.app.update_binding_highlights()
 
@@ -155,7 +165,8 @@ class TrackerTab(Vertical):
         stripped = "\n".join(line.strip() for line in filters.text.splitlines()).strip()
         if stripped != filters.text:
             filters.load_text(stripped)
-        self.filter = stripped
+        elif self.filter != stripped:
+            self.filter = stripped
 
     def _load_more(self) -> None:
         runs = self._filtered_runs
@@ -166,20 +177,14 @@ class TrackerTab(Vertical):
         self._append_rows(t, batch)
         self._offset += len(batch)
 
-    def _append_rows(self, table: DataTable, runs: list) -> None:
-        schedules_by_name = {s["name"]: s for s in self.app.schedules}
+    def _append_rows(self, table: DataTable, runs: list["PipelineJob"]) -> None:
+        schedules_by_name = self.app.schedules_by_name
         runs_by_schedule = self.app.runs_by_schedule
         cutoff_24h = pendulum.now("UTC").subtract(hours=24)
         for run in runs:
-            state_name = run.state.name
-            state = Text(state_name.replace("PIPELINE_STATE_", ""), style=config.RUN_STATE_STYLE.get(state_name, "dim"))
-            recent_fail = (
-                state_name == "PIPELINE_STATE_FAILED" and run.end_time and pendulum.instance(run.end_time) >= cutoff_24h
-            )
+            state, start, duration = fmt_run_cells(run, cutoff_24h)
             region = Text(fmt_region(run.name) if run.name else "")
-            start = Text(fmt_time(run.start_time), style="red" if recent_fail else "")
             end = Text(fmt_time(run.end_time))
-            duration = Text(fmt_duration(run.start_time, run.end_time))
             sched = schedules_by_name.get(run.schedule_name, {})
             cron = sched.get("cron")
             next_run = fmt_time(sched.get("nextRunTime"))
@@ -210,12 +215,10 @@ class TrackerTab(Vertical):
         }
 
     @property
-    def _filtered_runs(self) -> list:
+    def _filtered_runs(self) -> list["PipelineJob"]:
         runs = self.app.runs
-        predicates = [parse_filter(line)[0] for line in self.filter.splitlines() if line.strip()]
-        predicates = [p for p in predicates if p]
-        if predicates:
-            runs = [r for r in runs if r.name and any(p(fmt_name(r.name)) for p in predicates)]
+        if self._predicates:
+            runs = [r for r in runs if r.name and any(p(fmt_name(r.name)) for p in self._predicates)]
         if self.region_:
             runs = [r for r in runs if r.name and r.name.split("/")[3] == self.region_]
         if self.running or self.failed or self.cancelled:

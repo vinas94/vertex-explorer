@@ -1,6 +1,11 @@
+from typing import TYPE_CHECKING
+
 import pendulum
 
 import vertex_explorer.config as config
+
+if TYPE_CHECKING:
+    from google.cloud.aiplatform_v1 import PipelineJob
 
 
 def synthetic_name(location: str) -> str:
@@ -18,15 +23,15 @@ def synthetic_schedule(location: str) -> dict:
     }
 
 
-def build_schedules(schedules_by_loc: dict) -> list[dict]:
+def build_schedules(schedules_by_loc: dict[str, list[dict]]) -> list[dict]:
     schedules = [s for sl in schedules_by_loc.values() for s in sl]
     for location in schedules_by_loc:
         schedules.append(synthetic_schedule(location))
     return schedules
 
 
-def build_runs_index(all_runs: list) -> dict[str, list]:
-    by_sched: dict[str, list] = {}
+def build_runs_index(all_runs: list["PipelineJob"]) -> dict[str, list["PipelineJob"]]:
+    by_sched: dict[str, list["PipelineJob"]] = {}
     for run in all_runs:
         if run.schedule_name:
             by_sched.setdefault(run.schedule_name, []).append(run)

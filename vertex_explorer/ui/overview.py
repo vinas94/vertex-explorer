@@ -1,14 +1,20 @@
+from typing import TYPE_CHECKING
+
 import pendulum
 from rich.text import Text
 from textual import on
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
+from textual.widgets._data_table import CellDoesNotExist
 
 import vertex_explorer.config as config
 from vertex_explorer.filters import parse_filter
-from vertex_explorer.ui.formatters import fmt_duration, fmt_name, fmt_region, fmt_time, highlight, run_dots
+from vertex_explorer.ui.formatters import fmt_name, fmt_region, fmt_run_cells, fmt_time, highlight, run_dots
 from vertex_explorer.ui.widgets import DataTable, Input
+
+if TYPE_CHECKING:
+    from google.cloud.aiplatform_v1 import PipelineJob
 
 
 class OverviewTab(Vertical):
@@ -31,6 +37,8 @@ class OverviewTab(Vertical):
         self._current_schedule: str | None = None
         self._st_prev_col = None
         self._rt_name_col = None
+        self._predicate = None
+        self._filter_terms: list[str] = []
 
     # ── layout ────────────────────────────────────────────────────────────────
 
@@ -74,10 +82,13 @@ class OverviewTab(Vertical):
 
     def repopulate_schedules(self) -> None:
         table = self.query_one("#schedules-table", DataTable)
+        runs_by_schedule = self.app.runs_by_schedule
+        filter_terms = self._filter_terms
+        region_rank = {loc: len(config.REGIONS) - i - 1 for i, loc in enumerate(config.REGIONS)}
 
         try:
             saved_key = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
-        except Exception:
+        except CellDoesNotExist:
             saved_key = None
 
         with table.prevent(DataTable.RowHighlighted, DataTable.RowSelected):
@@ -92,27 +103,25 @@ class OverviewTab(Vertical):
             table.add_column("Name")
 
             def _sort_key(s):
-                region_rank = {loc: len(config.REGIONS) - i - 1 for i, loc in enumerate(config.REGIONS)}
                 return (
                     1 if s.get("_synthetic") else 0,
                     region_rank.get(s["name"].split("/")[3], -1),
                     s.get("nextRunTime") or pendulum.DateTime.min,
                 )
 
-            synthetic_scheds = [
+            synthetic_schedules = [
                 schedule
                 for schedule in self.app.schedules
                 if schedule.get("_synthetic")
                 and (not self.region_ or schedule["name"].split("/")[3] == self.region_)
                 and self._filtered_unscheduled_runs(schedule["name"])
             ]
-            for sched in sorted(self._filtered_schedules + synthetic_scheds, key=_sort_key, reverse=True):
-                name = sched.get("name")
-                state = sched.get("state")
-                display_name = sched.get("display_name")
+            for sched in sorted(self._filtered_schedules + synthetic_schedules, key=_sort_key, reverse=True):
+                name = sched.get("name", "")
+                state = sched.get("state", "")
+                display_name = sched.get("display_name", "")
                 synthetic = sched.get("_synthetic")
 
-                _, filter_terms = parse_filter(self.filter)
                 if synthetic:
                     name_cell = Text(display_name, style="italic dim")
                 elif filter_terms:
@@ -120,7 +129,6 @@ class OverviewTab(Vertical):
                 else:
                     name_cell = display_name
 
-                runs_by_schedule = self.app.runs_by_schedule
                 table.add_row(
                     fmt_region(name),
                     Text(state, style="green" if state == "ACTIVE" else "dim" if not synthetic else ""),
@@ -150,7 +158,7 @@ class OverviewTab(Vertical):
             if current := self._current_schedule:
                 if key := runs_table.coordinate_to_cell_key(runs_table.cursor_coordinate).row_key.value:
                     self._run_cursors[current] = key
-        except Exception:
+        except CellDoesNotExist:
             pass
 
         if not runs_table.columns:
@@ -168,11 +176,10 @@ class OverviewTab(Vertical):
 
         runs = self.app.runs_by_schedule.get(selected_schedule, [])
 
-        predicate, filter_terms = parse_filter(self.filter)
-        if is_unscheduled and predicate:
-            runs = [run for run in runs if run.name and predicate(fmt_name(run.name))]
+        if is_unscheduled and self._predicate:
+            runs = [run for run in runs if run.name and self._predicate(fmt_name(run.name))]
         target_offset = max(self._run_offsets.get(selected_schedule, 0), config.RUNS_PAGE_SIZE)
-        self._append_run_rows(runs_table, runs[:target_offset], is_unscheduled, filter_terms)
+        self._append_run_rows(runs_table, runs[:target_offset], is_unscheduled, self._filter_terms)
         self._run_offsets[selected_schedule] = target_offset
 
         self._current_schedule = selected_schedule
@@ -196,13 +203,14 @@ class OverviewTab(Vertical):
         self.query_one("#overview-filter", Input).focus()
 
     def watch_filter(self) -> None:
+        self._predicate, self._filter_terms = parse_filter(self.filter)
         self.repopulate_schedules()
         self.repopulate_runs()
         self.app.update_binding_highlights()
 
     def action_toggle_region(self) -> None:
-        cycle = dict(zip([None, *config.REGIONS], [*config.REGIONS, None]))
-        self.region_ = cycle[self.region_]
+        options = [None, *config.REGIONS]
+        self.region_ = options[(options.index(self.region_) + 1) % len(options)]
         self.repopulate_schedules()
         self.app.update_binding_highlights()
 
@@ -235,7 +243,7 @@ class OverviewTab(Vertical):
 
     @on(DataTable.RowHighlighted, "#schedules-table")
     @on(DataTable.RowSelected, "#schedules-table")
-    def _on_schedule_highlighted(self, event: DataTable.RowHighlighted | DataTable.RowSelected) -> None:
+    def _on_schedule_highlighted(self, _: DataTable.RowHighlighted | DataTable.RowSelected) -> None:
         if self.app.runs:
             self.repopulate_runs()
 
@@ -267,7 +275,6 @@ class OverviewTab(Vertical):
         if not selected:
             return
         is_unscheduled = selected.endswith("__unscheduled__")
-        _, filter_terms = parse_filter(self.filter)
         all_runs = (
             self._filtered_unscheduled_runs(selected) if is_unscheduled else self.app.runs_by_schedule.get(selected, [])
         )
@@ -276,31 +283,26 @@ class OverviewTab(Vertical):
         if not batch:
             return
         table = self.query_one("#runs-table", DataTable)
-        self._append_run_rows(table, batch, is_unscheduled, filter_terms)
+        self._append_run_rows(table, batch, is_unscheduled, self._filter_terms)
         self._run_offsets[selected] = offset + len(batch)
 
-    def _filtered_unscheduled_runs(self, schedule_name: str | None) -> list:
+    def _filtered_unscheduled_runs(self, schedule_name: str | None) -> list["PipelineJob"]:
         if not schedule_name:
             return []
 
         runs = self.app.runs_by_schedule.get(schedule_name, [])
-        predicate, _ = parse_filter(self.filter)
-        if not predicate:
+        if not self._predicate:
             return runs
 
-        return [run for run in runs if run.name and predicate(fmt_name(run.name))]
+        return [run for run in runs if run.name and self._predicate(fmt_name(run.name))]
 
     @staticmethod
-    def _append_run_rows(table: DataTable, runs: list, is_unscheduled: bool, filter_terms: list[str]) -> None:
+    def _append_run_rows(
+        table: DataTable, runs: list["PipelineJob"], is_unscheduled: bool, filter_terms: list[str]
+    ) -> None:
         cutoff_24h = pendulum.now("UTC").subtract(hours=24)
         for run in runs:
-            state_name = run.state.name
-            state = Text(state_name.replace("PIPELINE_STATE_", ""), style=config.RUN_STATE_STYLE.get(state_name, "dim"))
-            recent_fail = (
-                state_name == "PIPELINE_STATE_FAILED" and run.end_time and pendulum.instance(run.end_time) >= cutoff_24h
-            )
-            start = Text(fmt_time(run.start_time), style="red" if recent_fail else "")
-            duration = Text(fmt_duration(run.start_time, run.end_time))
+            state, start, duration = fmt_run_cells(run, cutoff_24h)
             extra = ()
             if is_unscheduled:
                 run_name = fmt_name(run.name)
@@ -335,13 +337,12 @@ class OverviewTab(Vertical):
         return st.coordinate_to_cell_key(st.cursor_coordinate).row_key.value
 
     @property
-    def _filtered_schedules(self) -> list:
-        predicate, _ = parse_filter(self.filter)
+    def _filtered_schedules(self) -> list[dict]:
         return [
             schedules
             for schedules in self.app.schedules
             if not schedules.get("_synthetic")
             and (not self.active or schedules.get("state") == "ACTIVE")
             and (not self.region_ or schedules["name"].split("/")[3] == self.region_)
-            and (not predicate or predicate(schedules.get("display_name")))
+            and (not self._predicate or self._predicate(schedules.get("display_name")))
         ]

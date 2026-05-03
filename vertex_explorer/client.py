@@ -1,6 +1,7 @@
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 
 import pendulum
 
@@ -90,10 +91,10 @@ def fetch_all(on_schedules=None, on_runs=None, on_error=None) -> dict:
                 on_runs(dict(runs))
 
     with ThreadPoolExecutor(max_workers=max(1, len(config.REGIONS) * 2 - 1)) as executor:
-        for loc in config.REGIONS:
-            fs = executor.submit(fetch_location_schedules, loc, sched_filter)
-            fr = executor.submit(fetch_location_runs, loc, runs_filter)
-            fs.add_done_callback(lambda f, loc=loc: _on_sched_done(loc, f))
-            fr.add_done_callback(lambda f, loc=loc: _on_runs_done(loc, f))
+        for location in config.REGIONS:
+            fs = executor.submit(fetch_location_schedules, location, sched_filter)
+            fr = executor.submit(fetch_location_runs, location, runs_filter)
+            fs.add_done_callback(partial(_on_sched_done, location))
+            fr.add_done_callback(partial(_on_runs_done, location))
 
     return {"runs": runs, "schedules": schedules}

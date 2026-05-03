@@ -1,4 +1,4 @@
-from typing import NamedTuple
+from typing import Literal, NamedTuple
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -12,8 +12,8 @@ from vertex_explorer.ui.widgets import SettingsInput, Static
 
 class Cell(NamedTuple):
     label: str
-    id: str
-    kind: str | None = None
+    widget_id: str
+    kind: Literal["checkbox"] | None = None
 
 
 _GRID: list[list[Cell | None]] = [
@@ -22,8 +22,9 @@ _GRID: list[list[Cell | None]] = [
     [Cell("Short Regions", "s-short-regions", "checkbox"), None],
 ]
 
-_GRID_POS = {cell.id: (r, c) for r, row in enumerate(_GRID) for c, cell in enumerate(row) if cell is not None}
+_GRID_POS = {cell.widget_id: (r, c) for r, row in enumerate(_GRID) for c, cell in enumerate(row) if cell is not None}
 _GRID_ORDER = list(_GRID_POS.values())
+_GRID_COLS = max(len(row) for row in _GRID)
 
 
 def _current_value(id_: str) -> str:
@@ -44,7 +45,7 @@ class SettingsScreen(ModalScreen[bool]):
                 yield Label("Settings", id="settings-title")
                 yield Label("shift+enter to save", id="settings-hint")
             with Horizontal(id="settings-columns"):
-                for col_idx in range(2):
+                for col_idx in range(_GRID_COLS):
                     with Vertical(classes="settings-col"):
                         for row in _GRID:
                             cell = row[col_idx]
@@ -52,9 +53,11 @@ class SettingsScreen(ModalScreen[bool]):
                                 with Horizontal(classes="settings-row"):
                                     yield Label(cell.label, classes="settings-label")
                                     if cell.kind == "checkbox":
-                                        yield Static(value=config.SHORT_REGIONS, id=cell.id, classes="settings-tick")
+                                        yield Static(
+                                            value=config.SHORT_REGIONS, id=cell.widget_id, classes="settings-tick"
+                                        )
                                     else:
-                                        yield SettingsInput(_current_value(cell.id), id=cell.id)
+                                        yield SettingsInput(_current_value(cell.widget_id), id=cell.widget_id)
 
     def on_mount(self) -> None:
         self.watch_cursor()
@@ -95,9 +98,9 @@ class SettingsScreen(ModalScreen[bool]):
         elif event.key == "enter":
             cell = _GRID[row][col]
             if cell.kind == "checkbox":
-                self.query_one(f"#{cell.id}", Static).toggle()
+                self.query_one(f"#{cell.widget_id}", Static).toggle()
             else:
-                inp = self.query_one(f"#{cell.id}", Input)
+                inp = self.query_one(f"#{cell.widget_id}", Input)
                 inp.can_focus = True
                 inp.focus()
         else:
@@ -129,6 +132,7 @@ class SettingsScreen(ModalScreen[bool]):
             try:
                 return int(self.query_one(idx, Input).value.strip())
             except ValueError:
+                self.app.notify(f"Invalid number at {idx[1:]}, kept {fallback}", severity="warning")
                 return fallback
 
         def _list(idx: str) -> list[str]:

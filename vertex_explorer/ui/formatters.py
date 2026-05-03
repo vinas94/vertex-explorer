@@ -1,9 +1,13 @@
 import re
+from typing import TYPE_CHECKING
 
 import pendulum
 from rich.text import Text
 
 import vertex_explorer.config as config
+
+if TYPE_CHECKING:
+    from google.cloud.aiplatform_v1 import PipelineJob
 
 
 def console_url(resource_name: str, kind: str) -> str:

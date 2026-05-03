@@ -1,3 +1,9 @@
+from typing import Callable
+
+Predicate = Callable[[str], bool]
+ParseResult = tuple[Predicate | None, list[str]]
+
+
 class _Tok:
     WORD, AND, OR, LP, RP, EOF = "WORD", "AND", "OR", "LP", "RP", "EOF"
 
@@ -7,7 +13,8 @@ class _Tok:
 
 
 def _lex(text: str) -> list[_Tok]:
-    out, i = [], 0
+    i = 0
+    out: list[_Tok] = []
     while i < len(text):
         c = text[i]
         if c.isspace():
@@ -47,13 +54,12 @@ class _Parser:
         self._i += 1
         return t
 
-    def parse(self) -> tuple:
+    def parse(self) -> ParseResult:
         if self._cur().kind == _Tok.EOF:
             return None, []
-        pred, terms = self._expr()
-        return pred, terms
+        return self._expr()
 
-    def _expr(self) -> tuple:
+    def _expr(self) -> ParseResult:
         pred, terms = self._term()
         while self._cur().kind == _Tok.OR:
             self._advance()
@@ -68,7 +74,7 @@ class _Parser:
             terms = terms + rt
         return pred, terms
 
-    def _term(self) -> tuple:
+    def _term(self) -> ParseResult:
         pred, terms = self._factor()
         while self._cur().kind in (_Tok.AND, _Tok.WORD, _Tok.LP):
             if self._cur().kind == _Tok.AND:
@@ -84,7 +90,7 @@ class _Parser:
             terms = terms + rt
         return pred, terms
 
-    def _factor(self) -> tuple:
+    def _factor(self) -> ParseResult:
         cur = self._cur()
         if cur.kind == _Tok.LP:
             self._advance()
@@ -92,17 +98,16 @@ class _Parser:
             if self._cur().kind == _Tok.RP:
                 self._advance()
             return pred, terms
-        elif cur.kind == _Tok.WORD:
+        if cur.kind == _Tok.WORD:
             w = self._advance().val.lower()
             return lambda s, w=w: w in s.lower(), [w]
-        elif cur.kind in (_Tok.RP, _Tok.EOF):
+        if cur.kind in (_Tok.RP, _Tok.EOF):
             return None, []
-        else:
-            self._advance()
-            return None, []
+        self._advance()
+        return None, []
 
 
-def parse_filter(text: str) -> tuple:
+def parse_filter(text: str) -> ParseResult:
     text = text.strip()
     if not text:
         return None, []

@@ -14,8 +14,10 @@ class DataTable(widgets.DataTable):
 
 
 class Footer(widgets.Footer):
-    _pressed: set[str] = set()
-    _toggled: dict[str, bool] = {}
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._pressed: set[str] = set()
+        self._toggled: dict[str, bool] = {}
 
     async def recompose(self) -> None:
         await super().recompose()
@@ -89,7 +91,10 @@ class Input(widgets.Input):
 
 class SettingsInput(Input):
     can_focus = False
-    _original_value: str = ""
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._original_value: str = ""
 
     def _on_focus(self, event) -> None:
         self._original_value = self.value

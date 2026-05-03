@@ -9,8 +9,8 @@ from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.events import Click
 from textual.reactive import reactive
-from textual.screen import ModalScreen
 from textual.widgets import DataTable, Input, Label
+from textual.widgets._data_table import CellDoesNotExist
 
 import vertex_explorer.config as config
 from vertex_explorer.client import fetch_all
@@ -53,7 +53,7 @@ class VertexExplorer(App):
     tab: reactive[str] = reactive("overview")
 
     schedules: list[dict] = []
-    schedule_names: dict[str, str] = {}
+    schedules_by_name: dict[str, dict] = {}
     runs: list["PipelineJob"] = []
     runs_by_schedule: dict[str, list["PipelineJob"]] = {}
     runs_by_name: dict[str, "PipelineJob"] = {}
@@ -115,7 +115,7 @@ class VertexExplorer(App):
         if self.loading_schedules or self.loading_runs:
             return
         self.schedules = []
-        self.schedule_names = {}
+        self.schedules_by_name = {}
         self.runs = []
         self.runs_by_schedule = {}
         self.runs_by_name = {}
@@ -125,15 +125,15 @@ class VertexExplorer(App):
 
     def action_open(self) -> None:
         self._flash_key("open")
-        if res := self._focused_resource:
-            kind, name = res
+        if resource := self._focused_resource:
+            kind, name = resource
             webbrowser.open(console_url(name, kind))
 
     def action_shift_open(self) -> None:
         self._flash_key("open")
-        if not (res := self._focused_resource):
+        if not (resource := self._focused_resource):
             return
-        kind, name = res
+        kind, name = resource
         if kind == "schedules":
             webbrowser.open(console_url(name, "schedules"))
             return
@@ -156,7 +156,7 @@ class VertexExplorer(App):
         self.set_timer(0.005, self._do_quit)
 
     def action_escape(self) -> None:
-        if not isinstance(self.screen, ModalScreen):
+        if not isinstance(self.screen, SettingsScreen):
             self._active_tab.escape()
             return
         focused = self.focused
@@ -168,9 +168,8 @@ class VertexExplorer(App):
         self.screen.set_focus(None)
 
     def action_next_tab(self) -> None:
-        if isinstance(self.screen, ModalScreen):
-            if hasattr(self.screen, "tab_next"):
-                self.screen.tab_next()
+        if isinstance(screen := self.screen, SettingsScreen):
+            screen.tab_next()
             return
         if self._active_tab.blur_active_input():
             return
@@ -209,7 +208,7 @@ class VertexExplorer(App):
     def on_schedules_ready(self, schedules_by_loc: dict) -> None:
         self.loading_schedules = False
         self.schedules = build_schedules(schedules_by_loc)
-        self.schedule_names = {s["name"]: s.get("display_name", "") for s in self.schedules}
+        self.schedules_by_name = {s["name"]: s for s in self.schedules}
         self.set_notification("Fetching runs...")
         self.query_one(OverviewTab).repopulate_schedules()
 
@@ -321,7 +320,7 @@ class VertexExplorer(App):
             return None
         try:
             name = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
-        except Exception:
+        except CellDoesNotExist:
             return None
         if not name or name.endswith("__unscheduled__"):
             return None
