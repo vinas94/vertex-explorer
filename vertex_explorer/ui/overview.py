@@ -270,6 +270,16 @@ class OverviewTab(Vertical):
             return True
         return False
 
+    def _filtered_unscheduled_runs(self, schedule_name: str | None) -> list["PipelineJob"]:
+        if not schedule_name:
+            return []
+
+        runs = self.app.runs_by_schedule.get(schedule_name, [])
+        if not self._predicate:
+            return runs
+
+        return [run for run in runs if run.name and self._predicate(fmt_name(run.name))]
+
     def _load_more_runs(self) -> None:
         selected = self._current_schedule
         if not selected:
@@ -285,16 +295,6 @@ class OverviewTab(Vertical):
         table = self.query_one("#runs-table", DataTable)
         self._append_run_rows(table, batch, is_unscheduled, self._filter_terms)
         self._run_offsets[selected] = offset + len(batch)
-
-    def _filtered_unscheduled_runs(self, schedule_name: str | None) -> list["PipelineJob"]:
-        if not schedule_name:
-            return []
-
-        runs = self.app.runs_by_schedule.get(schedule_name, [])
-        if not self._predicate:
-            return runs
-
-        return [run for run in runs if run.name and self._predicate(fmt_name(run.name))]
 
     @staticmethod
     def _append_run_rows(
