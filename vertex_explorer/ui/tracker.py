@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING
 
-import pendulum
 from rich.text import Text
 from textual import on
 from textual.binding import Binding
@@ -180,9 +179,8 @@ class TrackerTab(Vertical):
     def _append_rows(self, table: DataTable, runs: list["PipelineJob"]) -> None:
         schedules_by_name = self.app.schedules_by_name
         runs_by_schedule = self.app.runs_by_schedule
-        cutoff_24h = pendulum.now("UTC").subtract(hours=24)
         for run in runs:
-            state, start, duration = fmt_run_cells(run, cutoff_24h)
+            state, start, duration = fmt_run_cells(run)
             region = Text(fmt_region(run.name) if run.name else "")
             end = Text(fmt_time(run.end_time))
             sched = schedules_by_name.get(run.schedule_name, {})

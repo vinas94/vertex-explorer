@@ -300,9 +300,8 @@ class OverviewTab(Vertical):
     def _append_run_rows(
         table: DataTable, runs: list["PipelineJob"], is_unscheduled: bool, filter_terms: list[str]
     ) -> None:
-        cutoff_24h = pendulum.now("UTC").subtract(hours=24)
         for run in runs:
-            state, start, duration = fmt_run_cells(run, cutoff_24h)
+            state, start, duration = fmt_run_cells(run)
             extra = ()
             if is_unscheduled:
                 run_name = fmt_name(run.name)

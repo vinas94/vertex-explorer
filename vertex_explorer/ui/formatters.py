@@ -46,7 +46,7 @@ def fmt_time(ts) -> str:
 
 def fmt_duration(start, end) -> str:
     try:
-        d = pendulum.instance(end) - pendulum.instance(start)  # noqa
+        d = pendulum.instance(end) - pendulum.instance(start)
         h, m, s = d.hours, d.minutes, d.remaining_seconds
         if h:
             return f"{h:2d}h {m:02d}m"

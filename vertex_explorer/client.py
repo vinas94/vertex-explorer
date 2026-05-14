@@ -11,8 +11,8 @@ log = logging.getLogger(__name__)
 
 
 def fetch_location_runs(location: str, filter_str: str) -> list:
-    from google.cloud import aiplatform_v1  # noqa
-    from google.protobuf import field_mask_pb2  # noqa
+    from google.cloud import aiplatform_v1
+    from google.protobuf import field_mask_pb2
 
     _RUN_READ_MASK = field_mask_pb2.FieldMask(paths=["name", "start_time", "end_time", "state", "schedule_name"])
 
