@@ -57,6 +57,19 @@ def fmt_duration(start, end) -> str:
         return ""
 
 
+def fmt_run_cells(run: "PipelineJob") -> tuple[Text, Text, Text]:
+    cutoff_24h = pendulum.now("UTC").subtract(hours=24)
+
+    state_name = run.state.name
+    state = Text(state_name.replace("PIPELINE_STATE_", ""), style=config.RUN_STATE_STYLE.get(state_name, "dim"))
+    recent_fail = (
+        state_name == "PIPELINE_STATE_FAILED" and run.end_time and pendulum.instance(run.end_time) >= cutoff_24h
+    )
+    start = Text(fmt_time(run.start_time), style="red" if recent_fail else "")
+    duration = Text(fmt_duration(run.start_time, run.end_time))
+    return state, start, duration
+
+
 def highlight(text: str, terms: list[str]) -> Text:
     rt = Text(text)
     tl = text.lower()
