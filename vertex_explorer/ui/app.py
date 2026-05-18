@@ -12,14 +12,14 @@ from textual.reactive import reactive
 from textual.widgets import DataTable, Input, Label
 from textual.widgets._data_table import CellDoesNotExist
 
-import vertex_explorer.config as config
 from vertex_explorer.client import fetch_all
+from vertex_explorer.config import settings
 from vertex_explorer.processor import build_runs_index, build_schedules
 from vertex_explorer.ui.formatters import console_url
 from vertex_explorer.ui.overview import OverviewTab
 from vertex_explorer.ui.settings import SettingsScreen
 from vertex_explorer.ui.tracker import TrackerTab
-from vertex_explorer.ui.widgets import Footer, SettingsInput
+from vertex_explorer.ui.widgets import Footer, SettingsInput, TabBase
 
 if TYPE_CHECKING:
     from google.cloud.aiplatform_v1 import PipelineJob
@@ -83,7 +83,7 @@ class VertexExplorer(App):
         yield Footer()
 
     def on_mount(self) -> None:
-        if not config.PROJECT:
+        if not settings.project:
             self.set_notification("[yellow]Configure Project in settings[/]")
             return
 
@@ -307,7 +307,7 @@ class VertexExplorer(App):
     # ── properties ────────────────────────────────────────────────────────────
 
     @property
-    def _active_tab(self) -> OverviewTab | TrackerTab:
+    def _active_tab(self) -> TabBase:
         return self.query_one(self.TABS[self.tab])
 
     @property

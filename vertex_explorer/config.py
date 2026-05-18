@@ -1,5 +1,6 @@
 import json
 import logging
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import colorlog
@@ -12,15 +13,6 @@ colorlog.basicConfig(
 
 _SETTINGS_PATH = Path.home() / ".config" / "vertex-explorer" / "settings.json"
 
-PROJECT = "martin-test-datalab"
-REGIONS = ["europe-west3", "europe-west4"]
-
-RUNS_DAYS = 14
-SCHEDULES_DAYS = 14
-
-SHORT_REGIONS = True
-TRACKER_FILTERS = []
-
 RUNS_PAGE_SIZE = 100
 RUN_STATE_STYLE = {
     "PIPELINE_STATE_SUCCEEDED": "green",
@@ -31,40 +23,48 @@ RUN_STATE_STYLE = {
 }
 
 
-def load_settings() -> None:
-    global PROJECT, REGIONS, RUNS_DAYS, SCHEDULES_DAYS, SHORT_REGIONS, TRACKER_FILTERS
+@dataclass
+class Settings:
+    project: str = "martin-test-datalab"
+    regions: list[str] = field(default_factory=lambda: ["europe-west3", "europe-west4"])
+    runs_days: int = 14
+    schedules_days: int = 14
+    short_regions: bool = True
+    tracker_filters: list[str] = field(default_factory=list)
 
-    try:
-        data = json.loads(_SETTINGS_PATH.read_text())
-    except Exception:
-        return
+    def load(self) -> None:
+        try:
+            data = json.loads(_SETTINGS_PATH.read_text())
+        except Exception:
+            return
+        try:
+            self.project = data.get("PROJECT", self.project)
+            self.regions = list(dict.fromkeys(data.get("REGIONS", self.regions)))
+            self.runs_days = data.get("RUNS_DAYS", self.runs_days)
+            self.schedules_days = data.get("SCHEDULES_DAYS", self.schedules_days)
+            self.short_regions = bool(data.get("SHORT_REGIONS", self.short_regions))
+            self.tracker_filters = [
+                s for line in data.get("TRACKER_FILTERS", self.tracker_filters) if (s := line.strip())
+            ]
+        except Exception:
+            pass
 
-    try:
-        PROJECT = data.get("PROJECT", PROJECT)
-        REGIONS = list(dict.fromkeys(data.get("REGIONS", REGIONS)))
-        RUNS_DAYS = data.get("RUNS_DAYS", RUNS_DAYS)
-        SCHEDULES_DAYS = data.get("SCHEDULES_DAYS", SCHEDULES_DAYS)
-        SHORT_REGIONS = bool(data.get("SHORT_REGIONS", SHORT_REGIONS))
-        TRACKER_FILTERS = [s for line in data.get("TRACKER_FILTERS", TRACKER_FILTERS) if (s := line.strip())]
-    except Exception:
-        pass
-
-
-def save_settings() -> None:
-    _SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _SETTINGS_PATH.write_text(
-        json.dumps(
-            {
-                "PROJECT": PROJECT,
-                "REGIONS": REGIONS,
-                "RUNS_DAYS": RUNS_DAYS,
-                "SCHEDULES_DAYS": SCHEDULES_DAYS,
-                "SHORT_REGIONS": SHORT_REGIONS,
-                "TRACKER_FILTERS": TRACKER_FILTERS,
-            },
-            indent=2,
+    def save(self) -> None:
+        _SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _SETTINGS_PATH.write_text(
+            json.dumps(
+                {
+                    "PROJECT": self.project,
+                    "REGIONS": self.regions,
+                    "RUNS_DAYS": self.runs_days,
+                    "SCHEDULES_DAYS": self.schedules_days,
+                    "SHORT_REGIONS": self.short_regions,
+                    "TRACKER_FILTERS": self.tracker_filters,
+                },
+                indent=2,
+            )
         )
-    )
 
 
-load_settings()
+settings = Settings()
+settings.load()

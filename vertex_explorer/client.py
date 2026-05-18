@@ -5,7 +5,7 @@ from functools import partial
 
 import pendulum
 
-import vertex_explorer.config as config
+from vertex_explorer.config import settings
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def fetch_location_runs(location: str, filter_str: str) -> list:
         client_options={"api_endpoint": f"{location}-aiplatform.googleapis.com"}
     )
     request = aiplatform_v1.ListPipelineJobsRequest(
-        parent=f"projects/{config.PROJECT}/locations/{location}",  # noqa
+        parent=f"projects/{settings.project}/locations/{location}",  # noqa
         filter=filter_str,  # noqa
         read_mask=_RUN_READ_MASK,  # noqa
     )
@@ -37,7 +37,7 @@ def fetch_location_schedules(location: str, filter_str: str) -> list:
         client_options={"api_endpoint": f"{location}-aiplatform.googleapis.com"}
     )
     request = aiplatform_v1.ListSchedulesRequest(
-        parent=f"projects/{config.PROJECT}/locations/{location}",  # noqa
+        parent=f"projects/{settings.project}/locations/{location}",  # noqa
         filter=filter_str,  # noqa
     )
     log.info(f"{location}: start fetching schedules")
@@ -56,8 +56,8 @@ def fetch_location_schedules(location: str, filter_str: str) -> list:
 
 
 def fetch_all(on_schedules=None, on_runs=None, on_error=None) -> dict:
-    runs_filter = f'createTime>="{pendulum.today("UTC").subtract(days=config.RUNS_DAYS).to_iso8601_string()}"'
-    sched_filter = f'nextRunTime>="{pendulum.today("UTC").subtract(days=config.SCHEDULES_DAYS).to_iso8601_string()}"'
+    runs_filter = f'createTime>="{pendulum.today("UTC").subtract(days=settings.runs_days).to_iso8601_string()}"'
+    sched_filter = f'nextRunTime>="{pendulum.today("UTC").subtract(days=settings.schedules_days).to_iso8601_string()}"'
 
     schedules: dict = {}
     runs: dict = {}
@@ -74,7 +74,7 @@ def fetch_all(on_schedules=None, on_runs=None, on_error=None) -> dict:
             return
         with lock_sched:
             schedules[loc] = data
-            if len(schedules) == len(config.REGIONS) and on_schedules:
+            if len(schedules) == len(settings.regions) and on_schedules:
                 on_schedules(dict(schedules))
 
     def _on_runs_done(loc, future):
@@ -87,11 +87,11 @@ def fetch_all(on_schedules=None, on_runs=None, on_error=None) -> dict:
             return
         with lock_runs:
             runs[loc] = data
-            if len(runs) == len(config.REGIONS) and on_runs:
+            if len(runs) == len(settings.regions) and on_runs:
                 on_runs(dict(runs))
 
-    with ThreadPoolExecutor(max_workers=max(1, len(config.REGIONS) * 2 - 1)) as executor:
-        for location in config.REGIONS:
+    with ThreadPoolExecutor(max_workers=max(1, len(settings.regions) * 2 - 1)) as executor:
+        for location in settings.regions:
             fs = executor.submit(fetch_location_schedules, location, sched_filter)
             fr = executor.submit(fetch_location_runs, location, runs_filter)
             fs.add_done_callback(partial(_on_sched_done, location))

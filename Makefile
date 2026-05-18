@@ -19,3 +19,7 @@ format:
 # || true is just to suppress non-zero exit code when issues are found
 lint:
 	@uv run ruff check --exclude '*.ipynb' --output-format=concise --ignore E731 || true
+
+test:
+	@uv run pytest -q tests/
+	#uv run pytest -q tests/ --cov-report=term-missing --tb=short

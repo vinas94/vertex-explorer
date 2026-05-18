@@ -5,20 +5,25 @@ requires-python = ">=3.13,<3.14"
 dependencies = [
     "aiohttp>=3.13.5",
     "colorlog>=6.10.1",
-    "google-cloud-aiplatform>=1.149.0",
+    "google-cloud-aiplatform>=1.153.1",
     "httpx>=0.28.0",
     "ipython>=9.13.0",
     "pendulum>=3.2.0",
     "rich>=15.0.0",
-    "ruff>=0.15.12",
-    "textual>=8.2.5",
+    "ruff>=0.15.13",
+    "textual>=8.2.6",
 ]
 
-[project.scripts]
-ve = "vertex_explorer.main:main"
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
 
 [tool.uv]
 package = true
+
+[project.scripts]
+ve = "vertex_explorer.main:main"
 
 [build-system]
 requires = ["hatchling"]

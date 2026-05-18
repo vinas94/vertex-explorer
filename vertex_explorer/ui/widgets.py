@@ -2,9 +2,37 @@ import textual.widgets as widgets
 from rich.text import Text
 from textual import events
 from textual.binding import Binding
+from textual.containers import Vertical
 from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets._footer import FooterKey
+
+
+class TabBase(Vertical):
+    """Interface every tab in the app implements."""
+
+    @property
+    def notification(self) -> str:
+        raise NotImplementedError
+
+    @property
+    def toggled(self) -> dict[str, bool]:
+        raise NotImplementedError
+
+    def focus_default(self) -> None:
+        raise NotImplementedError
+
+    def blur_active_input(self, target=None) -> bool:
+        raise NotImplementedError
+
+    def escape(self) -> None:
+        raise NotImplementedError
+
+    def reset(self) -> None:
+        raise NotImplementedError
+
+    def repopulate(self) -> None:
+        raise NotImplementedError
 
 
 class DataTable(widgets.DataTable):

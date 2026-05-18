@@ -6,7 +6,7 @@ from textual.reactive import reactive
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label
 
-import vertex_explorer.config as config
+from vertex_explorer.config import settings
 from vertex_explorer.ui.widgets import SettingsInput, Static
 
 
@@ -29,10 +29,10 @@ _GRID_COLS = max(len(row) for row in _GRID)
 
 def _current_value(id_: str) -> str:
     return {
-        "s-runs-days": str(config.RUNS_DAYS),
-        "s-project": config.PROJECT,
-        "s-schedules-days": str(config.SCHEDULES_DAYS),
-        "s-regions": ", ".join(config.REGIONS),
+        "s-runs-days": str(settings.runs_days),
+        "s-project": settings.project,
+        "s-schedules-days": str(settings.schedules_days),
+        "s-regions": ", ".join(settings.regions),
     }[id_]
 
 
@@ -54,7 +54,9 @@ class SettingsScreen(ModalScreen[bool]):
                                     yield Label(cell.label, classes="settings-label")
                                     if cell.kind == "checkbox":
                                         yield Static(
-                                            value=config.SHORT_REGIONS, id=cell.widget_id, classes="settings-tick"
+                                            value=settings.short_regions,
+                                            id=cell.widget_id,
+                                            classes="settings-tick",
                                         )
                                     else:
                                         yield SettingsInput(_current_value(cell.widget_id), id=cell.widget_id)
@@ -138,28 +140,28 @@ class SettingsScreen(ModalScreen[bool]):
         def _list(idx: str) -> list[str]:
             return list(dict.fromkeys([v.strip() for v in self.query_one(idx, Input).value.split(",") if v.strip()]))
 
-        new_runs_days = _int("#s-runs-days", config.RUNS_DAYS)
-        new_schedules_days = _int("#s-schedules-days", config.SCHEDULES_DAYS)
+        new_runs_days = _int("#s-runs-days", settings.runs_days)
+        new_schedules_days = _int("#s-schedules-days", settings.schedules_days)
         new_project = self.query_one("#s-project", Input).value.strip()
         new_regions = _list("#s-regions")
         new_short_regions = self.query_one("#s-short-regions", Static).value
 
         needs_refresh = (
-            new_project != config.PROJECT
-            or new_regions != config.REGIONS
-            or new_runs_days != config.RUNS_DAYS
-            or new_schedules_days != config.SCHEDULES_DAYS
+            new_project != settings.project
+            or new_regions != settings.regions
+            or new_runs_days != settings.runs_days
+            or new_schedules_days != settings.schedules_days
         )
-        changed = new_short_regions != config.SHORT_REGIONS
+        changed = new_short_regions != settings.short_regions
 
-        config.PROJECT = new_project
-        config.REGIONS = new_regions
-        config.RUNS_DAYS = new_runs_days
-        config.SCHEDULES_DAYS = new_schedules_days
-        config.SHORT_REGIONS = new_short_regions
+        settings.project = new_project
+        settings.regions = new_regions
+        settings.runs_days = new_runs_days
+        settings.schedules_days = new_schedules_days
+        settings.short_regions = new_short_regions
 
         if needs_refresh or changed:
-            config.save_settings()
+            settings.save()
             self.app.notify("Settings updated")
 
         if changed and not needs_refresh:

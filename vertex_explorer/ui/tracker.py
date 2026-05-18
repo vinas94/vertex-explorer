@@ -8,16 +8,16 @@ from textual.reactive import reactive
 from textual.widgets import Label
 from textual.widgets._data_table import CellDoesNotExist
 
-import vertex_explorer.config as config
+from vertex_explorer.config import RUNS_PAGE_SIZE, settings
 from vertex_explorer.filters import parse_filter
 from vertex_explorer.ui.formatters import fmt_name, fmt_region, fmt_run_cells, fmt_time, run_dots
-from vertex_explorer.ui.widgets import DataTable, TextArea
+from vertex_explorer.ui.widgets import DataTable, TabBase, TextArea
 
 if TYPE_CHECKING:
     from google.cloud.aiplatform_v1 import PipelineJob
 
 
-class TrackerTab(Vertical):
+class TrackerTab(TabBase):
     BINDINGS = [
         Binding("f", "focus_filter", "Filter"),
         Binding("r", "toggle_region", "Region"),
@@ -50,8 +50,8 @@ class TrackerTab(Vertical):
         t = self.query_one("#tracker-table", DataTable)
         t.cursor_type = "row"
         self.watch(t, "scroll_y", self._on_scroll_y)
-        if config.TRACKER_FILTERS:
-            self.query_one("#tracker-filters", TextArea).load_text("\n".join(config.TRACKER_FILTERS))
+        if settings.tracker_filters:
+            self.query_one("#tracker-filters", TextArea).load_text("\n".join(settings.tracker_filters))
 
     # ── focus ─────────────────────────────────────────────────────────────────
 
@@ -85,8 +85,8 @@ class TrackerTab(Vertical):
         t.add_columns("Region", "Status", "Cron", "Next Run", "Prev", "Start", "End", "Duration", "Name")
 
         runs = self._filtered_runs
-        self._append_rows(t, runs[: config.RUNS_PAGE_SIZE])
-        self._offset = config.RUNS_PAGE_SIZE
+        self._append_rows(t, runs[:RUNS_PAGE_SIZE])
+        self._offset = RUNS_PAGE_SIZE
 
         if saved_key:
             for idx, row_key in enumerate(t.rows):
@@ -109,7 +109,7 @@ class TrackerTab(Vertical):
         self.app.update_binding_highlights()
 
     def action_toggle_region(self) -> None:
-        options = [None, *config.REGIONS]
+        options = [None, *settings.regions]
         self.region_ = options[(options.index(self.region_) + 1) % len(options)]
         self.repopulate()
         self.app.update_binding_highlights()
@@ -150,8 +150,8 @@ class TrackerTab(Vertical):
         filters = self.query_one("#tracker-filters", TextArea)
         if filters.has_focus and target is not filters:
             self._strip_filters()
-            config.TRACKER_FILTERS = [line for line in self.filter.splitlines() if line.strip()]
-            config.save_settings()
+            settings.tracker_filters = [line for line in self.filter.splitlines() if line.strip()]
+            settings.save()
             if isinstance(target, DataTable):
                 target.focus()
             else:
@@ -169,7 +169,7 @@ class TrackerTab(Vertical):
 
     def _load_more(self) -> None:
         runs = self._filtered_runs
-        batch = runs[self._offset : self._offset + config.RUNS_PAGE_SIZE]
+        batch = runs[self._offset : self._offset + RUNS_PAGE_SIZE]
         if not batch:
             return
         t = self.query_one("#tracker-table", DataTable)

@@ -4,20 +4,20 @@ import pendulum
 from rich.text import Text
 from textual import on
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal
 from textual.reactive import reactive
 from textual.widgets._data_table import CellDoesNotExist
 
-import vertex_explorer.config as config
+from vertex_explorer.config import RUNS_PAGE_SIZE, settings
 from vertex_explorer.filters import parse_filter
 from vertex_explorer.ui.formatters import fmt_name, fmt_region, fmt_run_cells, fmt_time, highlight, run_dots
-from vertex_explorer.ui.widgets import DataTable, Input
+from vertex_explorer.ui.widgets import DataTable, Input, TabBase
 
 if TYPE_CHECKING:
     from google.cloud.aiplatform_v1 import PipelineJob
 
 
-class OverviewTab(Vertical):
+class OverviewTab(TabBase):
     BINDINGS = [
         Binding("f", "focus_filter", "Filter"),
         Binding("r", "toggle_region", "Region"),
@@ -84,7 +84,7 @@ class OverviewTab(Vertical):
         table = self.query_one("#schedules-table", DataTable)
         runs_by_schedule = self.app.runs_by_schedule
         filter_terms = self._filter_terms
-        region_rank = {loc: len(config.REGIONS) - i - 1 for i, loc in enumerate(config.REGIONS)}
+        region_rank = {loc: len(settings.regions) - i - 1 for i, loc in enumerate(settings.regions)}
 
         try:
             saved_key = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
@@ -178,7 +178,7 @@ class OverviewTab(Vertical):
 
         if is_unscheduled and self._predicate:
             runs = [run for run in runs if run.name and self._predicate(fmt_name(run.name))]
-        target_offset = max(self._run_offsets.get(selected_schedule, 0), config.RUNS_PAGE_SIZE)
+        target_offset = max(self._run_offsets.get(selected_schedule, 0), RUNS_PAGE_SIZE)
         self._append_run_rows(runs_table, runs[:target_offset], is_unscheduled, self._filter_terms)
         self._run_offsets[selected_schedule] = target_offset
 
@@ -209,7 +209,7 @@ class OverviewTab(Vertical):
         self.app.update_binding_highlights()
 
     def action_toggle_region(self) -> None:
-        options = [None, *config.REGIONS]
+        options = [None, *settings.regions]
         self.region_ = options[(options.index(self.region_) + 1) % len(options)]
         self.repopulate_schedules()
         self.app.update_binding_highlights()
@@ -289,7 +289,7 @@ class OverviewTab(Vertical):
             self._filtered_unscheduled_runs(selected) if is_unscheduled else self.app.runs_by_schedule.get(selected, [])
         )
         offset = self._run_offsets.get(selected, 0)
-        batch = all_runs[offset : offset + config.RUNS_PAGE_SIZE]
+        batch = all_runs[offset : offset + RUNS_PAGE_SIZE]
         if not batch:
             return
         table = self.query_one("#runs-table", DataTable)

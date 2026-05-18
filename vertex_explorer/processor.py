@@ -2,14 +2,14 @@ from typing import TYPE_CHECKING
 
 import pendulum
 
-import vertex_explorer.config as config
+from vertex_explorer.config import settings
 
 if TYPE_CHECKING:
     from google.cloud.aiplatform_v1 import PipelineJob
 
 
 def synthetic_name(location: str) -> str:
-    return f"projects/{config.PROJECT}/locations/{location}/schedules/__unscheduled__"
+    return f"projects/{settings.project}/locations/{location}/schedules/__unscheduled__"
 
 
 def synthetic_schedule(location: str) -> dict:
