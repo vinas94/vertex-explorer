@@ -12,6 +12,7 @@ dependencies = [
     "rich>=15.0.0",
     "ruff>=0.15.13",
     "textual>=8.2.6",
+    "ty>=0.0.37",
 ]
 
 [dependency-groups]
