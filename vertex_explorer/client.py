@@ -1,0 +1,100 @@
+import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
+
+import pendulum
+
+from vertex_explorer.config import settings
+
+log = logging.getLogger(__name__)
+
+
+def fetch_location_runs(location: str, filter_str: str) -> list:
+    from google.cloud import aiplatform_v1
+    from google.protobuf import field_mask_pb2
+
+    _RUN_READ_MASK = field_mask_pb2.FieldMask(paths=["name", "start_time", "end_time", "state", "schedule_name"])
+
+    client = aiplatform_v1.PipelineServiceClient(
+        client_options={"api_endpoint": f"{location}-aiplatform.googleapis.com"}
+    )
+    request = aiplatform_v1.ListPipelineJobsRequest(
+        parent=f"projects/{settings.project}/locations/{location}",  # noqa
+        filter=filter_str,  # noqa
+        read_mask=_RUN_READ_MASK,  # noqa
+    )
+    log.info(f"{location}: start fetching runs")
+    runs = list(client.list_pipeline_jobs(request))
+    log.info(f"{location}: {len(runs)} runs retrieved")
+    return runs
+
+
+def fetch_location_schedules(location: str, filter_str: str) -> list:
+    from google.cloud import aiplatform_v1
+
+    client = aiplatform_v1.ScheduleServiceClient(
+        client_options={"api_endpoint": f"{location}-aiplatform.googleapis.com"}
+    )
+    request = aiplatform_v1.ListSchedulesRequest(
+        parent=f"projects/{settings.project}/locations/{location}",  # noqa
+        filter=filter_str,  # noqa
+    )
+    log.info(f"{location}: start fetching schedules")
+    schedules = [
+        {
+            "name": s.name,
+            "display_name": s.display_name,
+            "state": s.state.name,
+            "cron": s.cron,
+            "nextRunTime": s.next_run_time,
+        }
+        for s in client.list_schedules(request)
+    ]
+    log.info(f"{location}: {len(schedules)} schedules retrieved")
+    return schedules
+
+
+def fetch_all(on_schedules=None, on_runs=None, on_error=None) -> dict:
+    runs_filter = f'createTime>="{pendulum.today("UTC").subtract(days=settings.runs_days).to_iso8601_string()}"'
+    sched_filter = f'nextRunTime>="{pendulum.today("UTC").subtract(days=settings.schedules_days).to_iso8601_string()}"'
+
+    schedules: dict = {}
+    runs: dict = {}
+    lock_sched = threading.Lock()
+    lock_runs = threading.Lock()
+
+    def _on_sched_done(loc, future):
+        try:
+            data = future.result()
+        except Exception as e:
+            log.error(f"{loc}: failed to fetch schedules: {e}")
+            if on_error:
+                on_error()
+            return
+        with lock_sched:
+            schedules[loc] = data
+            if len(schedules) == len(settings.regions) and on_schedules:
+                on_schedules(dict(schedules))
+
+    def _on_runs_done(loc, future):
+        try:
+            data = future.result()
+        except Exception as e:
+            log.error(f"{loc}: failed to fetch runs: {e}")
+            if on_error:
+                on_error()
+            return
+        with lock_runs:
+            runs[loc] = data
+            if len(runs) == len(settings.regions) and on_runs:
+                on_runs(dict(runs))
+
+    with ThreadPoolExecutor(max_workers=max(1, len(settings.regions) * 2 - 1)) as executor:
+        for location in settings.regions:
+            fs = executor.submit(fetch_location_schedules, location, sched_filter)
+            fr = executor.submit(fetch_location_runs, location, runs_filter)
+            fs.add_done_callback(partial(_on_sched_done, location))
+            fr.add_done_callback(partial(_on_runs_done, location))
+
+    return {"runs": runs, "schedules": schedules}
