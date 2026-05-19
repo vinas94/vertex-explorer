@@ -14,7 +14,7 @@ Two tabs:
 - **Overview** — schedules on the left, runs of the selected schedule on the right. Synthetic "Unscheduled runs" bucket appears for runs without a parent schedule.
 - **Tracker** — flat list of every run across every schedule, with the parent schedule's details (cron, next run, recent run history) inline when available. Multi-line filter (each line OR'd), state toggles for running / failed / cancelled.
 
-Settings (project, regions, time windows) stored in `~/.config/vertex-explorer/settings.json` and are editable inline or via the settings menu.
+Settings (project, regions, lookback windows) stored in `~/.config/vertex-explorer/settings.json` and are editable inline or via the settings menu.
 
 ## Install
 
