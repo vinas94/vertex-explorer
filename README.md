@@ -28,21 +28,6 @@ Either way you get the `ve` command on your `PATH`.
 ## Keybindings
 
 - **Tabs**: `tab` to cycle between Overview and Tracker.
-- **Overview**: `f` filter, `r` cycle region, `a` only active, `o` open in console, `O` open parent schedule.
-- **Tracker**: `f` filter, `r` cycle region, `a/d/c` toggle running/failed/cancelled, `o` open run, `O` open parent schedule.
+- **Overview**: `f` filter, `r` cycle region, `a` toggle active, `o` open selected.
+- **Tracker**: `f` filter, `r` cycle region, `a/d/c` toggle running/failed/cancelled, `o` open run, `O` open schedule.
 - **Global**: `R` refresh, `s` settings, `q` quit.
-
-## Development
-
-```bash
-git clone https://github.com/<org>/vertex-explorer.git
-cd vertex-explorer
-uv sync
-uv run ve
-```
-
-```bash
-make test     # run pytest
-make lint     # run ruff
-make format   # apply ruff fixes
-```

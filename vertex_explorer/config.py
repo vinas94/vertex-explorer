@@ -25,8 +25,8 @@ RUN_STATE_STYLE = {
 
 @dataclass
 class Settings:
-    project: str = "martin-test-datalab"
-    regions: list[str] = field(default_factory=lambda: ["europe-west3", "europe-west4"])
+    project: str = ""
+    regions: list[str] = field(default_factory=list)
     runs_days: int = 14
     schedules_days: int = 14
     short_regions: bool = True

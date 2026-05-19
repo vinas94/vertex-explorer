@@ -83,8 +83,8 @@ class VertexExplorer(App):
         yield Footer()
 
     def on_mount(self) -> None:
-        if not settings.project:
-            self.set_notification("[yellow]Configure Project in settings[/]")
+        if not settings.project or not settings.regions:
+            self.set_notification("[yellow]Configure Project & Regions in settings[/]")
             return
 
         self.set_notification("Initialising...")
@@ -240,7 +240,7 @@ class VertexExplorer(App):
         if not self._auth_granted:
             self._auth_granted = self._check_auth()
             if not self._auth_granted:
-                _call(self.set_notification, "[red]Authentication error[/]")
+                _call(self.set_notification, "[red]Auth error — run: gcloud auth application-default login[/]")
                 self.loading_schedules = False
                 self.loading_runs = False
                 return

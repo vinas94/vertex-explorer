@@ -82,7 +82,6 @@ class OverviewTab(TabBase):
 
     def repopulate_schedules(self) -> None:
         table = self.query_one("#schedules-table", DataTable)
-        runs_by_schedule = self.app.runs_by_schedule
         filter_terms = self._filter_terms
         region_rank = {loc: len(settings.regions) - i - 1 for i, loc in enumerate(settings.regions)}
 
@@ -134,7 +133,7 @@ class OverviewTab(TabBase):
                     Text(state, style="green" if state == "ACTIVE" else "dim" if not synthetic else ""),
                     sched.get("cron"),
                     fmt_time(sched.get("nextRunTime")),
-                    run_dots(runs_by_schedule.get(name, [])),
+                    run_dots(self._visible_runs(sched)),
                     name_cell,
                     key=name,
                 )
@@ -194,8 +193,9 @@ class OverviewTab(TabBase):
     def update_dots(self) -> None:
         table = self.query_one("#schedules-table", DataTable)
         for row_key in table.rows:
-            dots = run_dots(self.app.runs_by_schedule.get(row_key.value, []))
-            table.update_cell(row_key, self._st_prev_col, dots)
+            sched = self.app.schedules_by_name.get(row_key.value)
+            if sched:
+                table.update_cell(row_key, self._st_prev_col, run_dots(self._visible_runs(sched)))
 
     # ── actions ───────────────────────────────────────────────────────────────
 
@@ -269,6 +269,12 @@ class OverviewTab(TabBase):
                 self.focus_default()
             return True
         return False
+
+    def _visible_runs(self, sched: dict) -> list["PipelineJob"]:
+        name = sched.get("name", "")
+        if sched.get("_synthetic"):
+            return self._filtered_unscheduled_runs(name)
+        return self.app.runs_by_schedule.get(name, [])
 
     def _filtered_unscheduled_runs(self, schedule_name: str | None) -> list["PipelineJob"]:
         if not schedule_name:
