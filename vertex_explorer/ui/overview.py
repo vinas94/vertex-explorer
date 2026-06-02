@@ -10,7 +10,7 @@ from textual.widgets._data_table import CellDoesNotExist
 
 from vertex_explorer.config import RUNS_PAGE_SIZE, settings
 from vertex_explorer.filters import parse_filter
-from vertex_explorer.ui.formatters import fmt_name, fmt_region, fmt_run_cells, fmt_time, highlight, run_dots
+from vertex_explorer.ui.formatters import fmt_cron, fmt_name, fmt_region, fmt_run_cells, fmt_time, highlight, run_dots
 from vertex_explorer.ui.widgets import DataTable, Input, TabBase
 
 if TYPE_CHECKING:
@@ -131,7 +131,7 @@ class OverviewTab(TabBase):
                 table.add_row(
                     fmt_region(name),
                     Text(state, style="green" if state == "ACTIVE" else "dim" if not synthetic else ""),
-                    sched.get("cron"),
+                    fmt_cron(sched.get("cron", "")),
                     fmt_time(sched.get("nextRunTime")),
                     run_dots(self._visible_runs(sched)),
                     name_cell,

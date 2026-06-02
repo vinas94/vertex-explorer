@@ -37,6 +37,15 @@ def fmt_name(resource_name: str) -> str:
     return re.sub(r"-\d{14,}$", "", resource_id)
 
 
+def fmt_cron(cron: str) -> str:
+    if not cron:
+        return ""
+    prefix, _, expr = cron.partition(" ")
+    if prefix.startswith("TZ="):
+        return expr
+    return cron
+
+
 def fmt_time(ts) -> str:
     try:
         return pendulum.instance(ts).format("MM-DD HH:mm")

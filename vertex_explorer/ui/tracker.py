@@ -10,7 +10,7 @@ from textual.widgets._data_table import CellDoesNotExist
 
 from vertex_explorer.config import RUNS_PAGE_SIZE, settings
 from vertex_explorer.filters import parse_filter
-from vertex_explorer.ui.formatters import fmt_name, fmt_region, fmt_run_cells, fmt_time, run_dots
+from vertex_explorer.ui.formatters import fmt_cron, fmt_name, fmt_region, fmt_run_cells, fmt_time, run_dots
 from vertex_explorer.ui.widgets import DataTable, TabBase, TextArea
 
 if TYPE_CHECKING:
@@ -184,7 +184,7 @@ class TrackerTab(TabBase):
             region = Text(fmt_region(run.name) if run.name else "")
             end = Text(fmt_time(run.end_time))
             sched = schedules_by_name.get(run.schedule_name, {})
-            cron = sched.get("cron")
+            cron = fmt_cron(sched.get("cron", ""))
             next_run = fmt_time(sched.get("nextRunTime"))
             prev = run_dots(runs_by_schedule.get(run.schedule_name, []))
             name = Text(fmt_name(run.name))
