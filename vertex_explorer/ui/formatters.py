@@ -55,6 +55,8 @@ def fmt_time(ts) -> str:
 
 def fmt_duration(start, end) -> str:
     try:
+        if end is None:
+            end = pendulum.now("UTC")
         d = pendulum.instance(end) - pendulum.instance(start)
         h, m, s = d.hours, d.minutes, d.remaining_seconds
         if h:
