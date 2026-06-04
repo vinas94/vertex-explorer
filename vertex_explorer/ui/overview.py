@@ -144,7 +144,7 @@ class OverviewTab(TabBase):
                         table.move_cursor(row=idx)
                         break
 
-            self.app.refresh_status(right=self.app.last_refresh.strftime("%H:%M:%S") if self.app.last_refresh else "")
+            self.app.refresh_status()
 
     def repopulate_runs(self) -> None:
         selected_schedule = self._selected_schedule

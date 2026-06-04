@@ -103,8 +103,9 @@ class VertexExplorer(App):
         self.notification = msg
         self.refresh_status()
 
-    def refresh_status(self, right: str = "") -> None:
+    def refresh_status(self) -> None:
         left = self.notification or self._active_tab.notification
+        right = self.last_refresh.strftime("%H:%M:%S") if self.last_refresh else ""
         self.query_one("#status-left", Label).update(left)
         self.query_one("#status-right", Label).update(right)
 
